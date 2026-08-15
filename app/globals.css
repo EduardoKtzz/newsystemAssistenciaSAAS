@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/*
+  A paleta vem da landing page (scrollCelulares), mas invertida: lá o azul
+  brilha sobre preto para vender; aqui o fundo é claro porque o atendente
+  encara esta tela oito horas por dia, muitas vezes num monitor barato sob
+  luz de loja. O azul fica só nas ações.
+*/
+@theme {
+  --color-marca-50: #eff8ff;
+  --color-marca-100: #dbeefe;
+  --color-marca-200: #bfe2ff;
+  --color-marca-300: #93d1ff;
+  --color-marca-400: #5be3ff;
+  --color-marca-500: #2e9bff;
+  --color-marca-600: #1a7fe8;
+  --color-marca-700: #0b5fd8;
+  --color-marca-800: #0d4ba8;
+  --color-marca-900: #113f84;
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+body {
+  background: #f6f7f9;
+  color: #0f172a;
+}
+
+/* Componentes repetidos em quase toda tela. Ficam aqui para não virar uma
+   fileira de doze classes utilitárias copiada de arquivo em arquivo. */
+@layer components {
+  .campo {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900
+           placeholder:text-slate-400 outline-none transition
+           focus:border-marca-500 focus:ring-2 focus:ring-marca-500/25
+           disabled:bg-slate-50 disabled:text-slate-500;
+  }
+
+  .rotulo {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+
+  /* O Tailwind 4 não deixa `@apply` alcançar uma classe declarada aqui
+     mesmo, então a base dos botões vem de um seletor agrupado em vez de um
+     `.btn` que as variantes herdariam. */
+  .btn,
+  .btn-primario,
+  .btn-secundario,
+  .btn-fantasma {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2
+           text-sm font-semibold transition
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primario {
+    @apply bg-marca-700 text-white hover:bg-marca-800
+           focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-marca-700;
+  }
+
+  .btn-secundario {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+
+  .btn-fantasma {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+
+  .cartao {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  .etiqueta {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1
+           text-xs font-semibold ring-1 ring-inset;
+  }
+}
+
+/* O código público é ditado por telefone e copiado de papel. Monoespaçado e
+   espaçado para "8" e "B" não se confundirem na leitura. */
+.codigo-os {
+  font-family: var(--font-mono);
+  letter-spacing: 0.18em;
+  font-variant-ligatures: none;
+}
