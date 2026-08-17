@@ -18,9 +18,29 @@ O cliente que precisa de acompanhamento é justamente o que está **sem celular*
 o aparelho dele está na bancada. Isso descarta senha (ele não lembra), SMS (o chip
 está dentro do aparelho) e app (ele não vai instalar do PC de um parente).
 
-Então o acesso é: **código curto impresso no comprovante + os 4 últimos dígitos do
+Então o acesso é **CPF ou código do comprovante, mais os 4 últimos dígitos do
 telefone**. Abre de qualquer máquina, sem cadastro. Todo o desenho do portal sai
 dessa restrição.
+
+São duas entradas porque cobrem dois momentos: quem acabou de sair da loja tem o
+papel na mão; quem já está há duas semanas esperando, perdeu o papel e só tem o
+CPF na cabeça. O mesmo campo aceita os dois — o formato do que foi digitado
+decide o caminho, sem perguntar nada.
+
+O telefone continua sendo o segundo fator nos dois casos. CPF no Brasil não é
+segredo: sozinho ele identifica, mas não autentica.
+
+## Duas peles, e não é enfeite
+
+| | cor | por quê |
+|---|---|---|
+| Telas do cliente (`/`, `/os/*`, `/entrar`, `/comecar`) | escura, com os azuis da landing | a pessoa vê poucas vezes, no pior dia do mês dela, e precisa sentir que entregou o aparelho para gente séria — aqui beleza é argumento de venda |
+| Painel da loja (`/painel/*`) | clara | o atendente encara oito horas por dia num monitor barato sob luz de loja; ali beleza é ler rápido sem errar |
+
+As classes da pele escura (`.noite`, `.vidro`, `.campo-noite`, `.btn-brilho`,
+`.grad-texto`) ficam em [`app/globals.css`](app/globals.css). Os fundos são camadas
+fixas e estáticas — nada depende de scroll nem anima, então o navegador pinta uma
+vez e nunca mais.
 
 ## Pondo para rodar
 
@@ -34,6 +54,10 @@ SQL Editor → cole [`supabase/schema.sql`](supabase/schema.sql) inteiro → **R
 
 Cria as tabelas, os gatilhos (número sequencial, código público, garantia) e as
 políticas de RLS.
+
+**Se você já rodou o schema antes da entrada por CPF**, rode também
+[`supabase/migracao-01-entrada-por-cpf.sql`](supabase/migracao-01-entrada-por-cpf.sql).
+Em banco novo não precisa — o `schema.sql` já vem com tudo.
 
 ### 3. Preencher as variáveis
 

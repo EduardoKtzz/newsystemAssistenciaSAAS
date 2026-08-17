@@ -36,6 +36,22 @@ export function FormularioNovaOs() {
             </p>
           </div>
           <div>
+            <label htmlFor="cliente_cpf" className="rotulo">
+              CPF <span className="font-normal text-slate-400">(recomendado)</span>
+            </label>
+            <input
+              id="cliente_cpf"
+              name="cliente_cpf"
+              inputMode="numeric"
+              maxLength={14}
+              className="campo"
+              placeholder="000.000.000-00"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              É como o cliente entra no portal depois que perde o comprovante.
+            </p>
+          </div>
+          <div className="sm:col-span-2">
             <label htmlFor="cliente_email" className="rotulo">
               E-mail <span className="font-normal text-slate-400">(opcional)</span>
             </label>

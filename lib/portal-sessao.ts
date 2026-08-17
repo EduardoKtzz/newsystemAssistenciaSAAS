@@ -80,3 +80,48 @@ export async function revogarAcesso(codigo: string): Promise<void> {
   const jar = await cookies();
   jar.delete(PREFIXO + codigo.toUpperCase());
 }
+
+/* -------------------------------------------------------------------
+   Acesso por CPF
+   -------------------------------------------------------------------
+   Quem entra pelo CPF pode ter mais de uma OS — dois aparelhos na mesma
+   loja, ou a mesma pessoa atendida em lojas diferentes (o cadastro de
+   cliente é por loja). Então o cookie guarda a lista de cadastros
+   liberados, não uma OS.
+
+   Guardamos os IDs dos cadastros, e não o CPF. O cookie é httpOnly e
+   assinado, mas dado pessoal que não precisa ser gravado não é gravado —
+   e ID de cadastro é inútil fora deste banco.
+------------------------------------------------------------------- */
+
+const COOKIE_CLIENTE = "fixcell_cliente";
+
+export async function liberarClientes(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const lista = [...new Set(ids)].sort().join(",");
+  const jar = await cookies();
+  jar.set(COOKIE_CLIENTE, `${lista}.${await assinar(lista)}`, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: DURACAO,
+  });
+}
+
+export async function clientesLiberados(): Promise<string[]> {
+  const jar = await cookies();
+  const bruto = jar.get(COOKIE_CLIENTE)?.value;
+  if (!bruto) return [];
+
+  // A assinatura é hex sem ponto, então o último ponto sempre separa a
+  // lista do MAC — mesmo que um id contivesse pontos um dia.
+  const corte = bruto.lastIndexOf(".");
+  if (corte < 1) return [];
+
+  const lista = bruto.slice(0, corte);
+  const mac = bruto.slice(corte + 1);
+  if (!iguais(mac, await assinar(lista))) return [];
+
+  return lista.split(",").filter(Boolean);
+}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { STATUS } from "@/lib/status";
 import { data, dataHora, diasAte, linkWhatsapp, moeda, telefone } from "@/lib/format";
 import { buscarItens, buscarLinhaDoTempo, buscarMensagens, buscarOsPublica } from "@/lib/portal";
-import { temAcesso } from "@/lib/portal-sessao";
+import { clientesLiberados, temAcesso } from "@/lib/portal-sessao";
 import { Trilha } from "@/components/trilha";
 import { BotaoEnvio } from "@/components/botao-envio";
 import { FormularioConfirmacao } from "./confirmacao";
@@ -12,15 +12,19 @@ export default async function Portal({ params }: PageProps<"/os/[codigo]">) {
   const { codigo } = await params;
   const cod = decodeURIComponent(codigo).toUpperCase();
 
-  // A confirmação vem antes da busca de propósito: se o código não existe,
-  // a tela é a mesma da confirmação errada. Quem estiver testando códigos
-  // no chute não descobre quais existem.
-  if (!(await temAcesso(cod))) {
-    return <FormularioConfirmacao codigo={cod} />;
-  }
-
   const os = await buscarOsPublica(cod);
-  if (!os) return <FormularioConfirmacao codigo={cod} />;
+
+  // Duas portas levam aqui: o cookie desta OS (quem entrou pelo código) e o
+  // cookie de cadastros liberados (quem entrou pelo CPF e tem várias).
+  //
+  // A tela de confirmação é a mesma resposta para "código não existe" e
+  // "sem acesso". Distinguir os dois entregaria de graça quais códigos
+  // existem a quem estiver chutando.
+  const liberado =
+    (await temAcesso(cod)) ||
+    (!!os && (await clientesLiberados()).includes(os.cliente_id));
+
+  if (!os || !liberado) return <FormularioConfirmacao codigo={cod} />;
 
   const [itens, eventos, mensagens] = await Promise.all([
     buscarItens(os.id),
@@ -33,248 +37,259 @@ export default async function Portal({ params }: PageProps<"/os/[codigo]">) {
   const decidir = os.status === "orcamento_enviado";
   const falta = (os.valor_final ?? os.valor_orcado ?? 0) - os.valor_sinal;
   const diasGarantia = diasAte(os.garantia_ate);
+  const outrasOs = (await clientesLiberados()).length > 0;
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-5 py-8">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="font-bold text-marca-700">{os.loja.nome}</p>
-          <p className="text-xs text-slate-500">
-            OS #{os.numero} · aberta em {data(os.criado_em)}
-          </p>
-        </div>
-        <Link href="/os" className="text-xs text-slate-400 hover:text-marca-700">
-          Outra OS
+    <main className="noite flex flex-1 flex-col">
+      <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-5 py-6">
+        <Link href="/" className="text-base font-bold tracking-tight">
+          Fix<span className="grad-texto">Cell</span>
         </Link>
+        {outrasOs && (
+          <Link href="/os/minhas" className="btn-noite">
+            Meus consertos
+          </Link>
+        )}
       </header>
 
-      <section className="cartao p-6">
-        <p className="text-sm text-slate-500">
-          Olá, {os.cliente_nome}. Seu {os.aparelho}:
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-          {info.publico}
-        </h1>
-        <p className="mt-2 text-slate-600">{info.explicacao}</p>
+      <div className="mx-auto w-full max-w-2xl flex-1 px-5 pb-16">
+        {/* ---- estado atual ---- */}
+        <section className="vidro p-6 sm:p-8">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-white/45">
+              Olá, {os.cliente_nome}. Seu {os.aparelho}:
+            </p>
+            <span className="text-xs text-white/25">
+              {os.loja.nome} · OS #{os.numero}
+            </span>
+          </div>
 
-        <div className="mt-6">
-          <Trilha status={os.status} />
-        </div>
+          <h1 className="mt-2 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+            <span className="grad-texto">{info.publico}</span>
+          </h1>
+          <p className="mt-3 leading-relaxed text-white/55">{info.explicacao}</p>
 
-        {os.prazo_estimado && os.status !== "entregue" && (
-          <p className="mt-6 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            {os.status === "pronto" ? (
+          <div className="mt-7">
+            <Trilha status={os.status} escuro />
+          </div>
+
+          {os.prazo_estimado && os.status !== "entregue" && (
+            <p className="mt-7 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+              {os.status === "pronto" ? (
+                "Pode buscar a partir de agora, no horário de funcionamento da loja."
+              ) : (
+                <>
+                  Previsão de entrega:{" "}
+                  <strong className="text-white">{data(os.prazo_estimado)}</strong>
+                  {(() => {
+                    const d = diasAte(os.prazo_estimado);
+                    if (d === null) return null;
+                    if (d < 0) return " — a loja está finalizando, e avisa por aqui.";
+                    if (d === 0) return " — é hoje.";
+                    if (d === 1) return " — é amanhã.";
+                    return ` — daqui a ${d} dias.`;
+                  })()}
+                </>
+              )}
+            </p>
+          )}
+        </section>
+
+        {/* ---- orçamento e decisão ---- */}
+        {mostraOrcamento && (
+          <section
+            className={`vidro mt-5 p-6 sm:p-8 ${
+              decidir ? "border-marca-500/40 ring-1 ring-marca-500/25" : ""
+            }`}
+          >
+            <h2 className="text-xl font-bold">
+              {decidir ? "Orçamento para aprovação" : "Orçamento"}
+            </h2>
+
+            {os.diagnostico && (
+              <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                  O que o técnico encontrou
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/70">
+                  {os.diagnostico}
+                </p>
+              </div>
+            )}
+
+            <table className="mt-5 w-full text-sm">
+              <tbody className="divide-y divide-white/6">
+                {itens.map((i) => (
+                  <tr key={i.id}>
+                    <td className="py-2.5 text-white/65">
+                      {i.descricao}
+                      {i.quantidade > 1 && (
+                        <span className="ml-1 text-white/30">({i.quantidade}×)</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-right text-white/85">
+                      {moeda(i.quantidade * Number(i.valor_unitario))}
+                    </td>
+                  </tr>
+                ))}
+                <tr>
+                  <td className="pt-4 text-base font-bold">Total</td>
+                  <td className="pt-4 text-right text-2xl font-bold">
+                    <span className="grad-texto">{moeda(os.valor_orcado)}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {decidir ? (
               <>
-                Pode buscar a partir de agora, no horário de funcionamento da loja.
+                <p className="mt-5 text-sm leading-relaxed text-white/55">
+                  O serviço só começa depois que você aprovar. Sua resposta fica
+                  registrada com data e hora.
+                </p>
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                  <form action={decidirOrcamento} className="flex-1">
+                    <input type="hidden" name="codigo" value={cod} />
+                    <input type="hidden" name="decisao" value="aprovar" />
+                    <BotaoEnvio className="btn-brilho" carregando="Aprovando...">
+                      Aprovar {moeda(os.valor_orcado)}
+                    </BotaoEnvio>
+                  </form>
+                  <form action={decidirOrcamento} className="sm:w-44">
+                    <input type="hidden" name="codigo" value={cod} />
+                    <input type="hidden" name="decisao" value="recusar" />
+                    <BotaoEnvio
+                      className="btn-noite w-full py-4"
+                      carregando="Registrando..."
+                    >
+                      Não quero
+                    </BotaoEnvio>
+                  </form>
+                </div>
+                <p className="mt-4 text-xs text-white/35">
+                  Ficou com dúvida? Pergunte à loja na conversa abaixo antes de decidir.
+                </p>
               </>
             ) : (
               <>
-                Previsão de entrega: <strong>{data(os.prazo_estimado)}</strong>
-                {(() => {
-                  const d = diasAte(os.prazo_estimado);
-                  if (d === null) return null;
-                  if (d < 0) return " — a loja está finalizando, e avisa por aqui.";
-                  if (d === 0) return " — é hoje.";
-                  if (d === 1) return " — é amanhã.";
-                  return ` — daqui a ${d} dias.`;
-                })()}
+                {os.aprovado_em && (
+                  <p className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                    Você aprovou este orçamento em {dataHora(os.aprovado_em)}.
+                  </p>
+                )}
+                {os.recusado_em && !os.aprovado_em && (
+                  <p className="mt-5 rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+                    Você recusou este orçamento em {dataHora(os.recusado_em)}. O aparelho
+                    pode ser retirado sem custo de serviço.
+                  </p>
+                )}
+                {os.aprovado_em && falta > 0 && (
+                  <p className="mt-3 text-sm text-white/55">
+                    {os.valor_sinal > 0
+                      ? `Sinal pago de ${moeda(os.valor_sinal)}. Falta ${moeda(falta)} na retirada.`
+                      : `A pagar na retirada: ${moeda(falta)}.`}
+                  </p>
+                )}
+                {os.pagamento === "pago" && (
+                  <p className="mt-3 text-sm text-emerald-300">Pagamento quitado.</p>
+                )}
               </>
             )}
+          </section>
+        )}
+
+        {diasGarantia !== null && diasGarantia > 0 && (
+          <p className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] px-5 py-4 text-sm text-emerald-200">
+            Serviço na garantia até <strong>{data(os.garantia_ate)}</strong> — faltam{" "}
+            {diasGarantia} dias. Deu problema no mesmo defeito? Fale com a loja por aqui.
           </p>
         )}
-      </section>
 
-      {/* ---- o orçamento e a decisão do cliente ---- */}
-      {mostraOrcamento && (
-        <section
-          className={`cartao mt-6 p-6 ${
-            decidir ? "ring-2 ring-marca-500 ring-offset-2" : ""
-          }`}
-        >
-          <h2 className="text-lg font-bold text-slate-900">
-            {decidir ? "Orçamento para aprovação" : "Orçamento"}
-          </h2>
+        {/* ---- conversa ---- */}
+        <section className="vidro mt-5 p-6 sm:p-8">
+          <h2 className="text-xl font-bold">Falar com a loja</h2>
+          <p className="mt-1.5 text-sm text-white/50">
+            Sem celular na mão, esta é a forma mais direta. A loja responde aqui mesmo.
+          </p>
 
-          {os.diagnostico && (
-            <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                O que o técnico encontrou
-              </p>
-              <p className="mt-1 text-sm text-slate-700">{os.diagnostico}</p>
-            </div>
-          )}
-
-          <table className="mt-4 w-full text-sm">
-            <tbody className="divide-y divide-slate-100">
-              {itens.map((i) => (
-                <tr key={i.id}>
-                  <td className="py-2 text-slate-700">
-                    {i.descricao}
-                    {i.quantidade > 1 && (
-                      <span className="ml-1 text-slate-400">({i.quantidade}×)</span>
-                    )}
-                  </td>
-                  <td className="py-2 text-right text-slate-900">
-                    {moeda(i.quantidade * Number(i.valor_unitario))}
-                  </td>
-                </tr>
-              ))}
-              <tr className="text-base font-bold">
-                <td className="py-3">Total</td>
-                <td className="py-3 text-right">{moeda(os.valor_orcado)}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {decidir ? (
-            <>
-              <p className="mt-4 text-sm text-slate-600">
-                O serviço só começa depois que você aprovar. Sua resposta fica registrada
-                com data e hora.
-              </p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <form action={decidirOrcamento} className="flex-1">
-                  <input type="hidden" name="codigo" value={cod} />
-                  <input type="hidden" name="decisao" value="aprovar" />
-                  <BotaoEnvio
-                    className="btn-primario w-full py-3 text-base"
-                    carregando="Aprovando..."
-                  >
-                    Aprovar {moeda(os.valor_orcado)}
-                  </BotaoEnvio>
-                </form>
-                <form action={decidirOrcamento} className="sm:w-40">
-                  <input type="hidden" name="codigo" value={cod} />
-                  <input type="hidden" name="decisao" value="recusar" />
-                  <BotaoEnvio
-                    className="btn-secundario w-full py-3"
-                    carregando="Registrando..."
-                  >
-                    Não quero
-                  </BotaoEnvio>
-                </form>
+          <div className="mt-6 space-y-3">
+            {mensagens.map((m) => (
+              <div
+                key={m.id}
+                className={`rounded-xl px-4 py-3 text-sm ${
+                  m.autor === "cliente"
+                    ? "ml-8 border border-marca-400/20 bg-marca-500/12 text-marca-50"
+                    : "mr-8 border border-white/8 bg-white/[0.05] text-white/80"
+                }`}
+              >
+                <p className="text-[11px] font-semibold opacity-50">
+                  {m.autor === "cliente" ? "Você" : os.loja.nome}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap leading-relaxed">{m.texto}</p>
+                <p className="mt-1.5 text-[11px] opacity-40">{dataHora(m.criado_em)}</p>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Ficou com dúvida? Pergunte à loja na conversa abaixo antes de decidir.
-              </p>
-            </>
-          ) : (
-            <>
-              {os.aprovado_em && (
-                <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                  Você aprovou este orçamento em {dataHora(os.aprovado_em)}.
-                </p>
+            ))}
+          </div>
+
+          <form action={mandarMensagem} className="mt-6 space-y-3">
+            <input type="hidden" name="codigo" value={cod} />
+            <textarea
+              name="texto"
+              rows={3}
+              required
+              maxLength={2000}
+              className="campo-noite resize-none"
+              placeholder="Escreva sua dúvida para a loja..."
+            />
+            <BotaoEnvio className="btn-brilho" carregando="Enviando...">
+              Enviar mensagem
+            </BotaoEnvio>
+          </form>
+
+          {os.loja.whatsapp && (
+            <a
+              href={linkWhatsapp(
+                os.loja.whatsapp,
+                `Olá! Sou ${os.cliente_nome}, da OS ${os.codigo} (${os.aparelho}).`,
               )}
-              {os.recusado_em && !os.aprovado_em && (
-                <p className="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                  Você recusou este orçamento em {dataHora(os.recusado_em)}. O aparelho pode
-                  ser retirado sem custo de serviço.
-                </p>
-              )}
-              {os.aprovado_em && falta > 0 && (
-                <p className="mt-2 text-sm text-slate-600">
-                  {os.valor_sinal > 0
-                    ? `Sinal pago de ${moeda(os.valor_sinal)}. Falta ${moeda(falta)} na retirada.`
-                    : `A pagar na retirada: ${moeda(falta)}.`}
-                </p>
-              )}
-              {os.pagamento === "pago" && (
-                <p className="mt-2 text-sm text-emerald-700">Pagamento quitado.</p>
-              )}
-            </>
+              target="_blank"
+              rel="noreferrer"
+              className="btn-noite mt-3 w-full py-3"
+            >
+              Ou chamar no WhatsApp
+            </a>
           )}
         </section>
-      )}
 
-      {diasGarantia !== null && diasGarantia > 0 && (
-        <p className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Serviço na garantia até <strong>{data(os.garantia_ate)}</strong> — faltam{" "}
-          {diasGarantia} dias. Deu problema no mesmo defeito? Fale com a loja por aqui.
-        </p>
-      )}
+        {/* ---- histórico ---- */}
+        <section className="vidro mt-5 p-6 sm:p-8">
+          <h2 className="text-xl font-bold">Histórico</h2>
+          <ol className="mt-5 space-y-5">
+            {eventos.map((e) => (
+              <li key={e.id} className="flex gap-4">
+                <div className="mt-1.5 size-2 shrink-0 rounded-full bg-marca-400 shadow-[0_0_10px_rgba(46,155,255,.7)]" />
+                <div>
+                  <p className="font-medium text-white/90">{e.titulo}</p>
+                  {e.descricao && (
+                    <p className="text-sm leading-relaxed text-white/50">{e.descricao}</p>
+                  )}
+                  <p className="mt-1 text-xs text-white/30">{dataHora(e.criado_em)}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-      {/* ---- conversa com a loja ---- */}
-      <section className="cartao mt-6 p-6">
-        <h2 className="text-lg font-bold text-slate-900">Falar com a loja</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Sem celular na mão, esta é a forma mais direta. A loja responde aqui mesmo.
-        </p>
-
-        <div className="mt-5 space-y-3">
-          {mensagens.map((m) => (
-            <div
-              key={m.id}
-              className={`rounded-lg px-4 py-3 text-sm ${
-                m.autor === "cliente"
-                  ? "ml-8 bg-marca-50 text-marca-900"
-                  : "mr-8 bg-slate-100 text-slate-800"
-              }`}
-            >
-              <p className="text-xs font-semibold opacity-60">
-                {m.autor === "cliente" ? "Você" : os.loja.nome}
-              </p>
-              <p className="mt-1 whitespace-pre-wrap">{m.texto}</p>
-              <p className="mt-1 text-xs opacity-50">{dataHora(m.criado_em)}</p>
-            </div>
-          ))}
-        </div>
-
-        <form action={mandarMensagem} className="mt-5 space-y-2">
-          <input type="hidden" name="codigo" value={cod} />
-          <textarea
-            name="texto"
-            rows={3}
-            required
-            maxLength={2000}
-            className="campo"
-            placeholder="Escreva sua dúvida para a loja..."
-          />
-          <BotaoEnvio className="btn-primario w-full py-2.5" carregando="Enviando...">
-            Enviar mensagem
-          </BotaoEnvio>
-        </form>
-
-        {os.loja.whatsapp && (
-          <a
-            href={linkWhatsapp(
-              os.loja.whatsapp,
-              `Olá! Sou ${os.cliente_nome}, da OS ${os.codigo} (${os.aparelho}).`,
-            )}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-secundario mt-3 w-full"
-          >
-            Ou chamar no WhatsApp
-          </a>
-        )}
-      </section>
-
-      {/* ---- histórico ---- */}
-      <section className="cartao mt-6 p-6">
-        <h2 className="text-lg font-bold text-slate-900">Histórico</h2>
-        <ol className="mt-4 space-y-4">
-          {eventos.map((e) => (
-            <li key={e.id} className="flex gap-3">
-              <div className="mt-1.5 size-2 shrink-0 rounded-full bg-marca-500" />
-              <div>
-                <p className="font-medium text-slate-900">{e.titulo}</p>
-                {e.descricao && <p className="text-sm text-slate-600">{e.descricao}</p>}
-                <p className="mt-0.5 text-xs text-slate-400">{dataHora(e.criado_em)}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <footer className="mt-8 rounded-xl bg-white p-6 text-sm text-slate-600 ring-1 ring-slate-200">
-        <p className="font-semibold text-slate-900">{os.loja.nome}</p>
-        {os.loja.endereco && <p className="mt-1">{os.loja.endereco}</p>}
-        {os.loja.telefone && <p>{telefone(os.loja.telefone)}</p>}
-        <p className="mt-3 text-xs text-slate-400">
-          Garantia de {os.loja.garantia_dias} dias sobre o serviço executado, contados da
-          entrega (CDC art. 26).
-        </p>
-      </footer>
+        <footer className="vidro mt-5 p-6 text-sm text-white/55">
+          <p className="font-semibold text-white">{os.loja.nome}</p>
+          {os.loja.endereco && <p className="mt-1">{os.loja.endereco}</p>}
+          {os.loja.telefone && <p>{telefone(os.loja.telefone)}</p>}
+          <p className="mt-3 text-xs text-white/30">
+            Garantia de {os.loja.garantia_dias} dias sobre o serviço executado, contados
+            da entrega (CDC art. 26).
+          </p>
+        </footer>
+      </div>
     </main>
   );
 }

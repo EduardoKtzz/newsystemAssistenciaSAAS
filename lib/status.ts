@@ -31,8 +31,10 @@ type StatusInfo = {
   explicacao: string;
   /** Posição na trilha do portal. `null` = fora do caminho feliz. */
   etapa: number | null;
-  /** Classes da bolinha/etiqueta. */
+  /** Classes da etiqueta no painel claro. */
   cor: string;
+  /** Classes da etiqueta nas telas escuras do cliente. */
+  corNoite: string;
   /** Para onde a loja pode mover a OS a partir daqui. */
   proximos: OsStatus[];
 };
@@ -44,6 +46,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     explicacao: "Recebemos seu aparelho e ele entrou na fila de análise.",
     etapa: 1,
     cor: "bg-slate-100 text-slate-700 ring-slate-200",
+    corNoite: "bg-white/8 text-white/70 ring-white/15",
     proximos: ["diagnostico", "cancelado"],
   },
   diagnostico: {
@@ -53,6 +56,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
       "Nosso técnico está avaliando o aparelho para identificar a causa do problema.",
     etapa: 2,
     cor: "bg-amber-100 text-amber-800 ring-amber-200",
+    corNoite: "bg-amber-400/12 text-amber-200 ring-amber-300/25",
     proximos: ["orcamento_enviado", "cancelado"],
   },
   orcamento_enviado: {
@@ -62,6 +66,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
       "O diagnóstico terminou e o orçamento está abaixo. O serviço só começa depois que você aprovar.",
     etapa: 3,
     cor: "bg-sky-100 text-sky-800 ring-sky-200",
+    corNoite: "bg-sky-400/14 text-sky-200 ring-sky-300/30",
     proximos: ["aprovado", "recusado", "cancelado"],
   },
   aprovado: {
@@ -70,6 +75,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     explicacao: "Você aprovou o orçamento. O serviço foi liberado para execução.",
     etapa: 4,
     cor: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+    corNoite: "bg-emerald-400/14 text-emerald-200 ring-emerald-300/30",
     proximos: ["aguardando_peca", "em_reparo", "cancelado"],
   },
   recusado: {
@@ -79,6 +85,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
       "Você recusou o orçamento. O aparelho está disponível para retirada sem custo de serviço.",
     etapa: null,
     cor: "bg-rose-100 text-rose-800 ring-rose-200",
+    corNoite: "bg-rose-400/14 text-rose-200 ring-rose-300/30",
     proximos: ["pronto", "orcamento_enviado", "cancelado"],
   },
   aguardando_peca: {
@@ -88,6 +95,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
       "A peça necessária foi pedida ao fornecedor. Assim que chegar, o reparo começa.",
     etapa: 5,
     cor: "bg-violet-100 text-violet-800 ring-violet-200",
+    corNoite: "bg-violet-400/14 text-violet-200 ring-violet-300/30",
     proximos: ["em_reparo", "cancelado"],
   },
   em_reparo: {
@@ -96,6 +104,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     explicacao: "Seu aparelho está na bancada, com o serviço em andamento.",
     etapa: 6,
     cor: "bg-blue-100 text-blue-800 ring-blue-200",
+    corNoite: "bg-marca-400/14 text-marca-200 ring-marca-300/30",
     proximos: ["pronto", "aguardando_peca", "cancelado"],
   },
   pronto: {
@@ -104,6 +113,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     explicacao: "Serviço concluído. Seu aparelho já pode ser retirado na loja.",
     etapa: 7,
     cor: "bg-teal-100 text-teal-800 ring-teal-200",
+    corNoite: "bg-teal-400/14 text-teal-200 ring-teal-300/30",
     proximos: ["entregue"],
   },
   entregue: {
@@ -112,6 +122,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     explicacao: "Aparelho entregue. A garantia do serviço começa a contar desta data.",
     etapa: 8,
     cor: "bg-slate-100 text-slate-500 ring-slate-200",
+    corNoite: "bg-white/6 text-white/45 ring-white/12",
     proximos: [],
   },
   cancelado: {
@@ -120,6 +131,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     explicacao: "Esta ordem de serviço foi cancelada.",
     etapa: null,
     cor: "bg-slate-200 text-slate-600 ring-slate-300",
+    corNoite: "bg-white/8 text-white/50 ring-white/15",
     proximos: [],
   },
 };

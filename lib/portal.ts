@@ -19,9 +19,10 @@ import type { Loja, Mensagem, Os, OsEvento, OsItem } from "./types";
  */
 
 const CAMPOS_PUBLICOS =
-  "id, numero, codigo, loja_id, status, defeito_relatado, diagnostico, prazo_estimado, " +
-  "valor_orcado, valor_final, valor_sinal, pagamento, orcamento_enviado_em, aprovado_em, " +
-  "recusado_em, entregue_em, garantia_ate, criado_em, atualizado_em";
+  "id, numero, codigo, loja_id, cliente_id, status, defeito_relatado, diagnostico, " +
+  "prazo_estimado, valor_orcado, valor_final, valor_sinal, pagamento, " +
+  "orcamento_enviado_em, aprovado_em, recusado_em, entregue_em, garantia_ate, " +
+  "criado_em, atualizado_em";
 
 export type OsPublica = Pick<
   Os,
@@ -29,6 +30,7 @@ export type OsPublica = Pick<
   | "numero"
   | "codigo"
   | "loja_id"
+  | "cliente_id"
   | "status"
   | "defeito_relatado"
   | "diagnostico"
@@ -157,6 +159,120 @@ export async function buscarItens(osId: string): Promise<OsItem[]> {
     .eq("os_id", osId)
     .order("criado_em");
   return (data ?? []) as OsItem[];
+}
+
+/* -------------------------------------------------------------------
+   Entrada por CPF
+------------------------------------------------------------------- */
+
+/**
+ * Confere CPF + os 4 últimos dígitos do telefone e devolve os cadastros
+ * que batem.
+ *
+ * São vários porque `cliente` é por loja: a mesma pessoa atendida em duas
+ * assistências tem dois cadastros, e ela tem direito de ver os dois.
+ *
+ * O segundo fator continua sendo o telefone, e não só o CPF, porque no
+ * Brasil o CPF de alguém não é segredo — vaza em cadastro de farmácia, em
+ * lista de condomínio, em qualquer lugar. Sozinho ele identifica, mas não
+ * autentica.
+ */
+export async function conferirPorCpf(
+  cpfBruto: string,
+  quatroDigitos: string,
+): Promise<
+  { ok: true; clienteIds: string[] } | { ok: false; motivo: "nao_encontrado" | "bloqueado" }
+> {
+  const admin = supabaseAdmin();
+  const cpf = soDigitos(cpfBruto);
+  const digitos = soDigitos(quatroDigitos);
+
+  if (cpf.length !== 11 || digitos.length !== 4) {
+    return { ok: false, motivo: "nao_encontrado" };
+  }
+
+  const { data: cadastros } = await admin
+    .from("cliente")
+    .select("id, telefone, tentativas_portal")
+    .eq("documento", cpf);
+
+  if (!cadastros?.length) return { ok: false, motivo: "nao_encontrado" };
+
+  if (cadastros.some((c) => (c.tentativas_portal ?? 0) >= LIMITE_TENTATIVAS)) {
+    return { ok: false, motivo: "bloqueado" };
+  }
+
+  const certos = cadastros.filter((c) => soDigitos(c.telefone).slice(-4) === digitos);
+
+  if (!certos.length) {
+    // Erro no telefone conta contra todos os cadastros daquele CPF: são a
+    // mesma pessoa, e contar em um só deixaria o limite ser burlado
+    // alternando entre as lojas.
+    await Promise.all(
+      cadastros.map((c) =>
+        admin
+          .from("cliente")
+          .update({ tentativas_portal: (c.tentativas_portal ?? 0) + 1 })
+          .eq("id", c.id),
+      ),
+    );
+    return { ok: false, motivo: "nao_encontrado" };
+  }
+
+  await Promise.all(
+    certos.map((c) => admin.from("cliente").update({ tentativas_portal: 0 }).eq("id", c.id)),
+  );
+
+  return { ok: true, clienteIds: certos.map((c) => c.id) };
+}
+
+export type ResumoOs = {
+  codigo: string;
+  numero: number;
+  status: Os["status"];
+  aparelho: string;
+  loja: string;
+  criado_em: string;
+  prazo_estimado: string | null;
+  valor: number | null;
+};
+
+/** As OS dos cadastros liberados, da mais recente para a mais antiga. */
+export async function buscarOsDosClientes(clienteIds: string[]): Promise<ResumoOs[]> {
+  if (!clienteIds.length) return [];
+  const admin = supabaseAdmin();
+
+  const { data } = await admin
+    .from("os")
+    .select(
+      "codigo, numero, status, criado_em, prazo_estimado, valor_final, valor_orcado, " +
+        "aparelho:aparelho_id(marca, modelo), loja:loja_id(nome)",
+    )
+    .in("cliente_id", clienteIds)
+    .order("criado_em", { ascending: false });
+
+  type Linha = {
+    codigo: string;
+    numero: number;
+    status: Os["status"];
+    criado_em: string;
+    prazo_estimado: string | null;
+    valor_final: number | null;
+    valor_orcado: number | null;
+    aparelho: { marca: string; modelo: string };
+    loja: { nome: string };
+  };
+
+  return ((data ?? []) as unknown as Linha[]).map((l) => ({
+    codigo: l.codigo,
+    numero: l.numero,
+    status: l.status,
+    aparelho: `${l.aparelho.marca} ${l.aparelho.modelo}`,
+    loja: l.loja.nome,
+    criado_em: l.criado_em,
+    prazo_estimado: l.prazo_estimado,
+    valor: l.valor_final ?? l.valor_orcado,
+  }));
 }
 
 export async function buscarMensagens(osId: string): Promise<Mensagem[]> {

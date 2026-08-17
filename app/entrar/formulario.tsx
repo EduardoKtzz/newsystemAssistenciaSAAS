@@ -1,10 +1,19 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { BotaoEnvio } from "@/components/botao-envio";
+import { useFormStatus } from "react-dom";
 import { criarConta, entrar, type EstadoForm } from "./actions";
 
 const VAZIO: EstadoForm = {};
+
+function Botao({ novo }: { novo: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className="btn-brilho">
+      {pending ? (novo ? "Criando..." : "Entrando...") : novo ? "Criar conta" : "Entrar"}
+    </button>
+  );
+}
 
 export function FormularioEntrada({ proximo }: { proximo: string }) {
   const [novo, setNovo] = useState(false);
@@ -17,20 +26,28 @@ export function FormularioEntrada({ proximo }: { proximo: string }) {
 
   return (
     <>
-      <h1 className="text-xl font-bold text-slate-900">
-        {novo ? "Criar conta da assistência" : "Entrar no painel"}
+      <h1 className="text-3xl font-bold tracking-tight">
+        {novo ? (
+          <>
+            Cadastre <span className="grad-texto">sua loja</span>
+          </>
+        ) : (
+          <>
+            Entrar no <span className="grad-texto">painel</span>
+          </>
+        )}
       </h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-3 leading-relaxed text-white/55">
         {novo
-          ? "Depois de criar a conta você cadastra os dados da loja."
+          ? "Depois de criar a conta você preenche os dados da assistência."
           : "Acesse as ordens de serviço da sua loja."}
       </p>
 
-      <form action={novo ? acaoCadastro : acaoLogin} className="mt-6 space-y-4">
+      <form action={novo ? acaoCadastro : acaoLogin} className="vidro mt-7 space-y-5 p-6">
         <input type="hidden" name="proximo" value={proximo} />
 
         <div>
-          <label htmlFor="email" className="rotulo">
+          <label htmlFor="email" className="rotulo-noite">
             E-mail
           </label>
           <input
@@ -39,13 +56,13 @@ export function FormularioEntrada({ proximo }: { proximo: string }) {
             type="email"
             required
             autoComplete="email"
-            className="campo"
+            className="campo-noite"
             placeholder="voce@sualoja.com.br"
           />
         </div>
 
         <div>
-          <label htmlFor="senha" className="rotulo">
+          <label htmlFor="senha" className="rotulo-noite">
             Senha
           </label>
           <input
@@ -55,34 +72,35 @@ export function FormularioEntrada({ proximo }: { proximo: string }) {
             required
             minLength={6}
             autoComplete={novo ? "new-password" : "current-password"}
-            className="campo"
+            className="campo-noite"
             placeholder="••••••••"
           />
         </div>
 
         {estado.erro && (
-          <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <p
+            role="alert"
+            className="rounded-xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+          >
             {estado.erro}
           </p>
         )}
         {estado.aviso && (
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <p
+            role="status"
+            className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+          >
             {estado.aviso}
           </p>
         )}
 
-        <BotaoEnvio
-          className="btn-primario w-full py-2.5"
-          carregando={novo ? "Criando..." : "Entrando..."}
-        >
-          {novo ? "Criar conta" : "Entrar"}
-        </BotaoEnvio>
+        <Botao novo={novo} />
       </form>
 
       <button
         type="button"
         onClick={() => setNovo((v) => !v)}
-        className="mt-5 w-full text-sm text-slate-600 hover:text-marca-700"
+        className="mt-6 w-full text-sm text-white/45 transition hover:text-marca-300"
       >
         {novo ? "Já tenho conta — entrar" : "Não tenho conta — cadastrar minha loja"}
       </button>

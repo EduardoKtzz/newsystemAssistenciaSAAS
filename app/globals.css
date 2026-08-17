@@ -1,10 +1,18 @@
 @import "tailwindcss";
 
 /*
-  A paleta vem da landing page (scrollCelulares), mas invertida: lá o azul
-  brilha sobre preto para vender; aqui o fundo é claro porque o atendente
-  encara esta tela oito horas por dia, muitas vezes num monitor barato sob
-  luz de loja. O azul fica só nas ações.
+  Duas peles, e a divisão não é enfeite.
+
+  O lado do CLIENTE (entrada, portal) é escuro e vem direto da landing page:
+  a pessoa vê essa tela poucas vezes, no pior dia do mês dela, e o que ela
+  precisa sentir é que entregou o aparelho para gente séria. Aqui a beleza
+  é argumento de venda — é a tela que a loja mostra para se orgulhar.
+
+  O lado da LOJA (painel) é claro porque o atendente encara aquilo oito
+  horas por dia, num monitor barato sob luz de loja. Fundo preto o dia
+  inteiro cansa, e ali beleza é ler rápido sem errar.
+
+  A paleta é a mesma nos dois: os azuis da landing.
 */
 @theme {
   --color-marca-50: #eff8ff;
@@ -83,4 +91,110 @@ body {
   font-family: var(--font-mono);
   letter-spacing: 0.18em;
   font-variant-ligatures: none;
+}
+
+/* ====================================================================
+   O LADO ESCURO — telas do cliente
+   ==================================================================== */
+
+/*
+  `.noite` pinta o próprio fundo em camadas fixas, e não no <body>, porque
+  o painel da loja divide o mesmo <body> e é claro. As camadas são fixas e
+  estáticas de propósito: nada aqui depende de scroll nem anima, então o
+  navegador pinta uma vez e nunca mais — a lição que a landing page custou
+  caro para aprender.
+*/
+.noite {
+  position: relative;
+  z-index: 0;
+  color: #e8eef7;
+}
+
+/* A base opaca cobre até o overscroll, senão o cinza do <body> pisca na
+   borda quando o dedo puxa a página além do fim. */
+.noite::before {
+  content: "";
+  position: fixed;
+  inset: -10vh 0;
+  background: #07080b;
+  z-index: -2;
+}
+
+/* Três brilhos e uma grade. A grade some nas bordas por uma máscara, o que
+   dá profundidade sem desenhar uma moldura. */
+.noite::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(58rem 40rem at 12% -12%, rgba(46, 155, 255, 0.20), transparent 62%),
+    radial-gradient(42rem 34rem at 96% 4%, rgba(91, 227, 255, 0.11), transparent 60%),
+    radial-gradient(56rem 44rem at 50% 118%, rgba(11, 95, 216, 0.18), transparent 62%),
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px) 0 0 / 68px 68px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px) 0 0 / 68px 68px;
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 35%, transparent 100%);
+}
+
+@layer components {
+  /* Cartão de vidro: o fundo precisa ser translúcido para os brilhos de
+     trás atravessarem — com fundo sólido a tela vira um retângulo cinza
+     colado num gradiente bonito. */
+  .vidro {
+    @apply rounded-2xl border border-white/10 bg-white/[0.035] backdrop-blur-xl;
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+      0 24px 70px -20px rgba(0, 0, 0, 0.85);
+  }
+
+  .campo-noite {
+    @apply w-full rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3.5
+           text-white placeholder:text-white/25 outline-none transition;
+  }
+  .campo-noite:focus {
+    border-color: rgba(46, 155, 255, 0.65);
+    background: rgba(46, 155, 255, 0.07);
+    box-shadow: 0 0 0 4px rgba(46, 155, 255, 0.16);
+  }
+
+  .rotulo-noite {
+    @apply mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45;
+  }
+
+  /* O botão herda o gradiente exato da landing, glow incluso: é o mesmo
+     produto, e a pessoa que viu o site precisa reconhecer isso. */
+  .btn-brilho {
+    @apply inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4
+           text-base font-bold transition
+           disabled:cursor-not-allowed disabled:opacity-55;
+    background: linear-gradient(90deg, #5be3ff, #2e9bff 60%, #0b5fd8 90%);
+    color: #02121f;
+    box-shadow: 0 10px 34px -6px rgba(46, 155, 255, 0.5);
+  }
+  .btn-brilho:hover:not(:disabled) {
+    box-shadow: 0 14px 44px -6px rgba(46, 155, 255, 0.68);
+    filter: brightness(1.06);
+  }
+
+  .btn-noite {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/12
+           bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/80 transition
+           hover:border-white/25 hover:bg-white/[0.08] hover:text-white;
+  }
+
+  .selo {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10
+           bg-white/[0.03] px-3.5 py-1.5 text-xs font-medium text-white/55;
+  }
+}
+
+/* Texto em degradê — a assinatura visual da landing. O padding-bottom evita
+   que o recorte corte a descida do "ç" e do "g". */
+.grad-texto {
+  background: linear-gradient(90deg, #5be3ff, #2e9bff 55%, #0b5fd8 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-bottom: 0.08em;
 }

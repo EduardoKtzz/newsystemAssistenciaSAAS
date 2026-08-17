@@ -1,41 +1,67 @@
 import Link from "next/link";
+import { EntradaPortal } from "./entrada-portal";
+import { PreviaPortal } from "@/components/previa-portal";
 
 /**
- * A porta de entrada tem duas fechaduras muito diferentes.
+ * A porta de entrada, escrita para o cliente e não para a loja.
  *
- * A loja entra todo dia e sabe onde clicar. O cliente entra uma vez, do PC
- * de um parente, nervoso porque o celular dele está na bancada de outra
- * pessoa. Por isso o caminho do cliente vem primeiro e maior: quem já usa
- * o sistema acha o link pequeno; quem nunca usou, não.
+ * O título é a frase que a pessoa realmente pensa quando chega aqui. Ela
+ * não veio "acessar o sistema de acompanhamento de ordens de serviço" —
+ * ela quer saber do celular dela, que está na bancada de um estranho.
+ *
+ * A loja tem uma porta discreta no topo. É gente que entra todo dia e sabe
+ * onde clicar; o cliente entra uma vez, muitas vezes do computador de
+ * outra pessoa, e é dele que a tela precisa cuidar.
  */
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16">
-      <div className="mb-10 text-center">
-        <p className="text-2xl font-bold tracking-tight text-marca-700">FixCell</p>
-        <p className="mt-1 text-sm text-slate-500">Assistência técnica de celular</p>
+    <main className="noite flex flex-1 flex-col">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
+        <span className="text-lg font-bold tracking-tight">
+          Fix<span className="grad-texto">Cell</span>
+        </span>
+        <Link href="/entrar" className="btn-noite">
+          Área da loja
+        </Link>
+      </header>
+
+      <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-14 px-6 pb-16 pt-6 lg:grid-cols-[1.05fr_1fr] lg:gap-10 lg:pt-0">
+        <div className="max-w-xl">
+          <span className="selo">
+            <span className="size-1.5 rounded-full bg-marca-400" />
+            Acompanhamento de conserto
+          </span>
+
+          <h1 className="mt-6 text-[2.7rem] font-bold leading-[1.05] tracking-tight sm:text-6xl">
+            Onde está o
+            <br />
+            <span className="grad-texto">meu celular?</span>
+          </h1>
+
+          <p className="mt-5 text-lg leading-relaxed text-white/55">
+            Veja o status do reparo, o prazo, o orçamento e fale com a loja. Sem criar
+            conta, sem instalar nada — de qualquer aparelho, inclusive o emprestado.
+          </p>
+
+          <div className="mt-8">
+            <EntradaPortal />
+          </div>
+
+          <div className="mt-7 flex flex-wrap gap-2">
+            <span className="selo">Sem cadastro</span>
+            <span className="selo">Aprove o orçamento online</span>
+            <span className="selo">Converse com a loja</span>
+          </div>
+        </div>
+
+        <div className="hidden lg:block">
+          <PreviaPortal />
+        </div>
       </div>
 
-      <div className="cartao p-8">
-        <h1 className="text-xl font-bold text-slate-900">
-          Acompanhe o conserto do seu aparelho
-        </h1>
-        <p className="mt-2 text-slate-600">
-          Digite o código que está no comprovante que a loja te entregou. Você vê o
-          status, o prazo, o orçamento e pode falar com a loja por aqui — não precisa
-          criar conta nem instalar nada.
-        </p>
-        <Link href="/os" className="btn-primario mt-6 w-full py-3 text-base">
-          Consultar meu conserto
-        </Link>
-      </div>
-
-      <div className="mt-8 text-center text-sm text-slate-500">
-        É uma assistência técnica?{" "}
-        <Link href="/entrar" className="font-semibold text-marca-700 hover:underline">
-          Entrar no painel
-        </Link>
-      </div>
+      <footer className="mx-auto w-full max-w-6xl px-6 pb-8 text-xs text-white/25">
+        © 2026 FixCell · Feito para quem está sem o celular agora.
+      </footer>
     </main>
   );
 }

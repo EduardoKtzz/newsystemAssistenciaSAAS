@@ -76,15 +76,17 @@ export default async function Comprovante({ params }: PageProps<"/comprovante/[i
         <p className="text-sm font-medium text-slate-700">
           Acompanhe seu conserto pela internet
         </p>
-        <p className="mt-3 text-sm text-slate-600">{base || "seusite.com.br"}/os</p>
+        <p className="mt-3 text-sm text-slate-600">{base || "seusite.com.br"}</p>
         <p className="codigo-os my-3 text-4xl font-bold text-slate-900">{os.codigo}</p>
         <p className="text-xs text-slate-500">
-          Peça o código acima e confirme com os 4 últimos dígitos do seu telefone
+          Use o código acima {os.cliente.documento ? "ou o seu CPF" : ""} e confirme com os
+          4 últimos dígitos do seu telefone ({telefone(os.cliente.telefone).slice(-4)}).
           <br />
-          ({telefone(os.cliente.telefone).slice(-4)}). Não precisa criar conta.
+          Não precisa criar conta nem instalar aplicativo.
         </p>
         <p className="mt-3 text-xs text-slate-500">
-          Pelo site você vê o status, o orçamento, aprova o serviço e fala com a loja.
+          Pelo site você vê o status, o orçamento, aprova o serviço e fala com a loja —
+          de qualquer aparelho, inclusive emprestado.
         </p>
       </section>
 

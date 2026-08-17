@@ -11,7 +11,7 @@ import { STATUS, TRILHA, type OsStatus } from "@/lib/status";
  * caminho — desenhar uma régua para eles sugeriria um progresso que não
  * existe. Nesses casos o componente não é renderizado.
  */
-export function Trilha({ status }: { status: OsStatus }) {
+export function Trilha({ status, escuro = false }: { status: OsStatus; escuro?: boolean }) {
   const atual = STATUS[status].etapa;
   if (atual === null) return null;
 
@@ -27,17 +27,27 @@ export function Trilha({ status }: { status: OsStatus }) {
             <div className="flex w-full items-center">
               <span
                 className={`h-1 flex-1 rounded-full ${
-                  feito || agora ? "bg-marca-500" : "bg-slate-200"
+                  feito || agora
+                    ? "bg-marca-500"
+                    : escuro
+                      ? "bg-white/12"
+                      : "bg-slate-200"
                 }`}
               />
             </div>
             <span
               className={`text-center text-[10px] leading-tight sm:text-xs ${
                 agora
-                  ? "font-semibold text-marca-700"
+                  ? escuro
+                    ? "font-semibold text-marca-300"
+                    : "font-semibold text-marca-700"
                   : feito
-                    ? "text-slate-500"
-                    : "text-slate-300"
+                    ? escuro
+                      ? "text-white/45"
+                      : "text-slate-500"
+                    : escuro
+                      ? "text-white/20"
+                      : "text-slate-300"
               }`}
             >
               {STATUS[s].publico}

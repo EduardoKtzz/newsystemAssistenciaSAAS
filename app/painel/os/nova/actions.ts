@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigirLoja } from "@/lib/sessao-loja";
 import { supabaseServidor } from "@/lib/supabase/server";
-import { soDigitos } from "@/lib/format";
+import { cpfValido, soDigitos } from "@/lib/format";
 
 export type EstadoForm = { erro?: string };
 
@@ -27,6 +27,7 @@ export async function abrirOs(
   const nome = String(dados.get("cliente_nome") ?? "").trim();
   const fone = soDigitos(String(dados.get("cliente_telefone") ?? ""));
   const email = String(dados.get("cliente_email") ?? "").trim();
+  const cpf = soDigitos(String(dados.get("cliente_cpf") ?? ""));
   const marca = String(dados.get("marca") ?? "").trim();
   const modelo = String(dados.get("modelo") ?? "").trim();
   const cor = String(dados.get("cor") ?? "").trim();
@@ -43,20 +44,39 @@ export async function abrirOs(
   if (!marca || !modelo) return { erro: "Informe marca e modelo do aparelho." };
   if (defeito.length < 3) return { erro: "Descreva o problema relatado." };
 
+  // CPF é opcional, mas se veio tem que estar certo: um dígito trocado não
+  // dá erro agora e reaparece como um cliente que não consegue entrar no
+  // portal semanas depois.
+  if (cpf && !cpfValido(cpf)) {
+    return { erro: "O CPF informado não é válido. Confira os números." };
+  }
+
   // Cliente: procura pelo telefone dentro da loja.
   let clienteId: string;
   const { data: achado } = await supabase
     .from("cliente")
-    .select("id")
+    .select("id, documento")
     .eq("telefone", fone)
     .maybeSingle();
 
   if (achado) {
     clienteId = achado.id;
+    // Cadastro antigo sem CPF ganha o CPF agora, e com ele o acesso ao
+    // portal por CPF. Um CPF já gravado não é sobrescrito: se os dois
+    // diferem, quem decide é o balcão, não um formulário de entrada.
+    if (cpf && !achado.documento) {
+      await supabase.from("cliente").update({ documento: cpf }).eq("id", clienteId);
+    }
   } else {
     const { data, error } = await supabase
       .from("cliente")
-      .insert({ loja_id: loja.id, nome, telefone: fone, email: email || null })
+      .insert({
+        loja_id: loja.id,
+        nome,
+        telefone: fone,
+        email: email || null,
+        documento: cpf || null,
+      })
       .select("id")
       .single();
     if (error || !data) return { erro: "Não foi possível salvar o cliente." };

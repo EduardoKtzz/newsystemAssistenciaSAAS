@@ -272,8 +272,14 @@ export default async function DetalheOs({ params, searchParams }: PageProps<"/pa
               {os.codigo}
             </p>
             <p className="mt-2 text-center text-xs text-slate-500">
-              Código + os 4 últimos dígitos do telefone
+              {os.cliente.documento ? "Código ou CPF" : "Código"} + os 4 últimos dígitos do
+              telefone
             </p>
+            {!os.cliente.documento && (
+              <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Sem CPF no cadastro, este cliente só entra com o papel do comprovante.
+              </p>
+            )}
             <div className="mt-4 space-y-2">
               <Copiar texto={linkPortal} className="btn-secundario w-full">
                 Copiar link

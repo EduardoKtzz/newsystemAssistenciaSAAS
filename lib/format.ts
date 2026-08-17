@@ -24,6 +24,38 @@ export function telefone(v: string | null | undefined): string {
   return v ?? "";
 }
 
+/**
+ * Valida CPF pelos dígitos verificadores.
+ *
+ * Vale o trabalho porque o CPF virou chave de busca do portal: um dígito
+ * errado no cadastro do balcão não dá erro nenhum na hora, e reaparece
+ * semanas depois como um cliente que jura que o site não acha a OS dele.
+ * Conferir na digitação transforma isso em um aviso imediato.
+ */
+export function cpfValido(v: string): boolean {
+  const d = soDigitos(v);
+  if (d.length !== 11) return false;
+  // 111.111.111-11 e afins passam na conta dos dígitos, mas não existem.
+  if (/^(\d)\1{10}$/.test(d)) return false;
+
+  for (const [ate, pos] of [
+    [9, 10],
+    [10, 11],
+  ]) {
+    let soma = 0;
+    for (let i = 0; i < ate; i++) soma += Number(d[i]) * (pos - i);
+    const resto = (soma * 10) % 11 % 10;
+    if (resto !== Number(d[ate])) return false;
+  }
+  return true;
+}
+
+export function cpf(v: string | null | undefined): string {
+  const d = soDigitos(v ?? "");
+  if (d.length !== 11) return v ?? "";
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
 export function data(v: string | null | undefined): string {
   if (!v) return "—";
   // Data pura (YYYY-MM-DD) não tem fuso. Interpretá-la como UTC e exibir em

@@ -99,13 +99,20 @@ create table if not exists cliente (
   -- checagem para quem digita "1234".
   telefone   text not null,
   email      text,
+  -- CPF, só dígitos. É a chave de busca do portal: o cliente lembra o CPF
+  -- de cabeça, e o papel com o código ele perde.
   documento  text,
   observacao text,
+  -- Palpites errados de telefone na entrada por CPF. Mesmo motivo do
+  -- contador da OS: CPF no Brasil não é segredo, e sem limite sobram só
+  -- 10 mil combinações de 4 dígitos entre um CPF vazado e os dados aqui.
+  tentativas_portal int not null default 0,
   criado_em  timestamptz not null default now()
 );
 
 create index if not exists idx_cliente_loja on cliente(loja_id);
 create index if not exists idx_cliente_telefone on cliente(loja_id, telefone);
+create index if not exists idx_cliente_documento on cliente(documento);
 
 -- O aparelho é entidade própria, e não texto solto dentro da OS. É isso
 -- que permite responder "esse IMEI já passou aqui antes?" e enxergar

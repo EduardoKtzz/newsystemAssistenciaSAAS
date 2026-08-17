@@ -23,6 +23,7 @@ export type Cliente = {
   email: string | null;
   documento: string | null;
   observacao: string | null;
+  tentativas_portal: number;
   criado_em: string;
 };
 

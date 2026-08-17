@@ -17,11 +17,14 @@ export default async function Comecar() {
   if (vinculo) redirect("/painel");
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16">
-      <div className="cartao p-8">
-        <h1 className="text-xl font-bold text-slate-900">Dados da sua loja</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          É o que aparece para o cliente na tela de acompanhamento.
+    <main className="noite flex flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Dados da <span className="grad-texto">sua loja</span>
+        </h1>
+        <p className="mt-3 leading-relaxed text-white/55">
+          É o que o seu cliente vê na tela de acompanhamento — e o que sai impresso no
+          comprovante que ele leva no bolso.
         </p>
         <FormularioLoja />
       </div>
