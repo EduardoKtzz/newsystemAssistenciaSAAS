@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { configSupabase } from "./lib/supabase/config";
 
 /**
  * Renova a sessão do Supabase a cada navegação e barra o /painel de quem
@@ -14,27 +15,24 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 export default async function proxy(request: NextRequest) {
   let resposta = NextResponse.next({ request });
+  const { url: urlSupabase, chave } = configSupabase();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesParaGravar) {
-          for (const { name, value } of cookiesParaGravar) {
-            request.cookies.set(name, value);
-          }
-          resposta = NextResponse.next({ request });
-          for (const { name, value, options } of cookiesParaGravar) {
-            resposta.cookies.set(name, value, options);
-          }
-        },
+  const supabase = createServerClient(urlSupabase, chave, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesParaGravar) {
+        for (const { name, value } of cookiesParaGravar) {
+          request.cookies.set(name, value);
+        }
+        resposta = NextResponse.next({ request });
+        for (const { name, value, options } of cookiesParaGravar) {
+          resposta.cookies.set(name, value, options);
+        }
       },
     },
-  );
+  });
 
   // getUser() (e não getSession()) porque este valida o token no servidor
   // do Supabase. getSession() só lê o cookie, que é falsificável.
