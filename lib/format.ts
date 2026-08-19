@@ -28,12 +28,12 @@ export function soDigitos(v: string): string {
  * Devolve NaN quando não há número, para quem chama decidir o que fazer.
  */
 export function numeroBR(bruto: string | null | undefined): number {
-  const limpo = String(bruto ?? "").replace(/[^d,.-]/g, "");
+  const limpo = String(bruto ?? "").replace(/[^\d,.-]/g, "");
   if (!limpo) return NaN;
 
   // Com vírgula presente, ela é o separador decimal e todo ponto é milhar.
   if (limpo.includes(",")) {
-    return Number(limpo.replace(/./g, "").replace(",", "."));
+    return Number(limpo.replace(/\./g, "").replace(",", "."));
   }
 
   // Só pontos: "1.200" no balcão é mil e duzentos, não um vírgula dois. O
