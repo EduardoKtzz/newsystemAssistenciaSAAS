@@ -58,7 +58,11 @@ export default async function Painel({ searchParams }: PageProps<"/painel">) {
     ]);
 
     const alvos = [`codigo.eq.${busca.toUpperCase()}`];
-    if (/^\d+$/.test(busca)) alvos.push(`numero.eq.${busca}`);
+    // Até 9 dígitos, e não \d+: `os.numero` é int4, e um IMEI de 15
+    // dígitos ou um telefone de 11 estoura o tipo. O PostgREST derruba a
+    // consulta inteira com erro 22003, a lista volta nula e a tela diz
+    // "Nada encontrado" — justamente para o IMEI, que o campo pede.
+    if (/^\d{1,9}$/.test(busca)) alvos.push(`numero.eq.${busca}`);
     if (clientes?.length) alvos.push(`cliente_id.in.(${clientes.map((c) => c.id)})`);
     if (aparelhos?.length) alvos.push(`aparelho_id.in.(${aparelhos.map((a) => a.id)})`);
 
@@ -90,10 +94,10 @@ export default async function Painel({ searchParams }: PageProps<"/painel">) {
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 escuro:text-slate-100">
             Ordens de serviço
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 escuro:text-slate-400">
             {abertas} em andamento na {loja.nome}
           </p>
         </div>
@@ -130,43 +134,43 @@ export default async function Painel({ searchParams }: PageProps<"/painel">) {
 
       {ordenadas.length === 0 ? (
         <div className="cartao p-12 text-center">
-          <p className="font-medium text-slate-700">
+          <p className="font-medium text-slate-700 escuro:text-slate-300">
             {busca ? "Nada encontrado para essa busca." : "Nenhuma OS por aqui ainda."}
           </p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 escuro:text-slate-400">
             {busca
               ? "Tente o código do comprovante ou parte do nome do cliente."
               : "Cadastre a primeira quando um aparelho chegar no balcão."}
           </p>
           {!busca && (
             <Link href="/painel/os/nova" className="btn-primario mt-6">
-              Cadastrar primeira OS
+              Cadastrar primeiro conserto
             </Link>
           )}
         </div>
       ) : (
-        <ul className="cartao divide-y divide-slate-100">
+        <ul className="cartao divide-y divide-slate-100 escuro:divide-white/8">
           {ordenadas.map((os) => (
             <li key={os.id}>
               <Link
                 href={`/painel/os/${os.id}`}
-                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition hover:bg-slate-50"
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition hover:bg-slate-50 escuro:hover:bg-white/5"
               >
                 <div className="w-20 shrink-0">
-                  <p className="font-semibold text-slate-900">#{os.numero}</p>
-                  <p className="codigo-os text-xs text-slate-400">{os.codigo}</p>
+                  <p className="font-semibold text-slate-900 escuro:text-slate-100">#{os.numero}</p>
+                  <p className="codigo-os text-xs text-slate-400 escuro:text-slate-500">{os.codigo}</p>
                 </div>
 
                 <div className="min-w-52 flex-1">
-                  <p className="font-medium text-slate-900">{os.cliente.nome}</p>
-                  <p className="truncate text-sm text-slate-500">
+                  <p className="font-medium text-slate-900 escuro:text-slate-100">{os.cliente.nome}</p>
+                  <p className="truncate text-sm text-slate-500 escuro:text-slate-400">
                     {os.aparelho.marca} {os.aparelho.modelo} · {os.defeito_relatado}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   {comMensagem.has(os.id) && (
-                    <span className="etiqueta bg-marca-50 text-marca-700 ring-marca-200">
+                    <span className="etiqueta bg-marca-50 escuro:bg-marca-500/12 text-marca-700 escuro:text-marca-300 ring-marca-200 escuro:ring-marca-400/30">
                       Mensagem nova
                     </span>
                   )}
@@ -174,10 +178,10 @@ export default async function Painel({ searchParams }: PageProps<"/painel">) {
                 </div>
 
                 <div className="w-28 text-right">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-slate-900 escuro:text-slate-100">
                     {moeda(os.valor_final ?? os.valor_orcado)}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 escuro:text-slate-500">
                     {os.pagamento === "pago"
                       ? "Pago"
                       : os.pagamento === "sinal"
@@ -186,7 +190,7 @@ export default async function Painel({ searchParams }: PageProps<"/painel">) {
                   </p>
                 </div>
 
-                <div className="w-24 text-right text-xs text-slate-400">
+                <div className="w-24 text-right text-xs text-slate-400 escuro:text-slate-500">
                   {desde(os.criado_em)}
                 </div>
               </Link>
@@ -217,7 +221,7 @@ function Filtro({
       className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
         ativo
           ? "bg-marca-700 text-white"
-          : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+          : "bg-white escuro:bg-slate-900 text-slate-600 escuro:text-slate-400 ring-1 ring-slate-200 escuro:ring-white/12 hover:bg-slate-50 escuro:hover:bg-white/5"
       }`}
     >
       {children}

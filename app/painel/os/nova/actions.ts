@@ -6,7 +6,15 @@ import { exigirLoja } from "@/lib/sessao-loja";
 import { supabaseServidor } from "@/lib/supabase/server";
 import { cpfValido, soDigitos } from "@/lib/format";
 
-export type EstadoForm = { erro?: string };
+/**
+ * O erro volta acompanhado do que a pessoa digitou.
+ *
+ * O React 19 dá reset no formulário assim que a ação do servidor
+ * responde. Sem devolver os valores, um CPF com um dígito trocado apaga
+ * nome, aparelho, defeito e prazo — e o atendente redigita tudo com o
+ * cliente esperando no balcão.
+ */
+export type EstadoForm = { erro?: string; valores?: Record<string, string> };
 
 /**
  * Abre uma OS a partir do balcão.
@@ -24,6 +32,13 @@ export async function abrirOs(
   const { loja } = await exigirLoja();
   const supabase = await supabaseServidor();
 
+  // Tudo que veio do formulário volta junto com qualquer erro. Montado uma
+  // vez aqui para nenhum `return` novo esquecer de devolver os campos.
+  const valores = Object.fromEntries(
+    [...dados.entries()].filter(([, v]) => typeof v === "string"),
+  ) as Record<string, string>;
+  const falha = (erro: string): EstadoForm => ({ erro, valores });
+
   const nome = String(dados.get("cliente_nome") ?? "").trim();
   const fone = soDigitos(String(dados.get("cliente_telefone") ?? ""));
   const email = String(dados.get("cliente_email") ?? "").trim();
@@ -37,18 +52,18 @@ export async function abrirOs(
   const acessorios = String(dados.get("acessorios") ?? "").trim();
   const prazo = String(dados.get("prazo_estimado") ?? "").trim();
 
-  if (nome.length < 2) return { erro: "Informe o nome do cliente." };
+  if (nome.length < 2) return falha("Informe o nome do cliente.");
   // 10 dígitos = fixo com DDD. Menos que isso não dá para avisar ninguém, e
   // a confirmação do portal usa os 4 últimos deste número.
-  if (fone.length < 10) return { erro: "Informe o telefone do cliente com DDD." };
-  if (!marca || !modelo) return { erro: "Informe marca e modelo do aparelho." };
-  if (defeito.length < 3) return { erro: "Descreva o problema relatado." };
+  if (fone.length < 10) return falha("Informe o telefone do cliente com DDD.");
+  if (!marca || !modelo) return falha("Informe marca e modelo do aparelho.");
+  if (defeito.length < 3) return falha("Descreva o problema relatado.");
 
   // CPF é opcional, mas se veio tem que estar certo: um dígito trocado não
   // dá erro agora e reaparece como um cliente que não consegue entrar no
   // portal semanas depois.
   if (cpf && !cpfValido(cpf)) {
-    return { erro: "O CPF informado não é válido. Confira os números." };
+    return falha("O CPF informado não é válido. Confira os números.");
   }
 
   // Cliente: procura pelo telefone dentro da loja.
@@ -79,21 +94,37 @@ export async function abrirOs(
       })
       .select("id")
       .single();
-    if (error || !data) return { erro: "Não foi possível salvar o cliente." };
+    if (error || !data) return falha("Não foi possível salvar o cliente.");
     clienteId = data.id;
   }
 
   // Aparelho: o IMEI é o identificador de verdade. Sem ele, cada entrada
   // vira um aparelho novo — chutar por marca+modelo juntaria dois iPhone 12
   // diferentes do mesmo dono num cadastro só.
+  //
+  // A busca é presa ao cliente de propósito. Sem isso, um IMEI que já
+  // passou pela loja no nome de outra pessoa — aparelho de segunda mão, ou
+  // um dígito errado na digitação — faz a OS nascer grudada no cadastro
+  // antigo, e o comprovante sai com marca e modelo de outro aparelho.
+  //
+  // E o que foi digitado agora vale mais que o cadastro velho: quem está
+  // com o aparelho na mão é o atendente. Reaproveitar a linha ignorando o
+  // que ele digitou é o mesmo erro, só que silencioso.
   let aparelhoId: string | null = null;
   if (imei) {
     const { data } = await supabase
       .from("aparelho")
-      .select("id")
+      .select("id, marca, modelo")
       .eq("imei", imei)
+      .eq("cliente_id", clienteId)
       .maybeSingle();
-    aparelhoId = data?.id ?? null;
+
+    if (data) {
+      aparelhoId = data.id;
+      if (data.marca !== marca || data.modelo !== modelo) {
+        await supabase.from("aparelho").update({ marca, modelo }).eq("id", data.id);
+      }
+    }
   }
 
   if (!aparelhoId) {
@@ -109,7 +140,7 @@ export async function abrirOs(
       })
       .select("id")
       .single();
-    if (error || !data) return { erro: "Não foi possível salvar o aparelho." };
+    if (error || !data) return falha("Não foi possível salvar o aparelho.");
     aparelhoId = data.id;
   }
 
@@ -128,7 +159,7 @@ export async function abrirOs(
     .select("id")
     .single();
 
-  if (erroOs || !os) return { erro: "Não foi possível abrir a OS." };
+  if (erroOs || !os) return falha("Não foi possível abrir a OS.");
 
   await supabase.from("os_evento").insert({
     os_id: os.id,

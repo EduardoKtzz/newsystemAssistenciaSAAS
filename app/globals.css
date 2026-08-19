@@ -35,18 +35,72 @@ body {
   color: #0f172a;
 }
 
+/* ====================================================================
+   MODO CLARO / ESCURO DO PAINEL
+
+   Só o painel troca. As telas do cliente são escuras por decisão de
+   produto — ali o escuro é a marca, não uma preferência.
+
+   O interruptor é o atributo `data-tema` num único elemento que embrulha
+   o painel. Duas consequências boas: a home continua estática (ninguém
+   precisa ler cookie na raiz do app) e a troca é instantânea no
+   navegador, sem ida ao servidor.
+
+   As superfícies vêm de variáveis, e não de classes utilitárias, para a
+   troca acontecer num lugar só. O que sobra em utilitário ganha a
+   variante `escuro:` declarada abaixo.
+   ==================================================================== */
+
+@custom-variant escuro (&:where([data-tema="escuro"], [data-tema="escuro"] *));
+
+[data-tema] {
+  --sup: #ffffff;        /* superfície dos cartões */
+  --sup-2: #f8fafc;      /* superfície rebaixada, dentro de cartão */
+  --fundo: #f6f7f9;      /* fundo da página */
+  --borda: #e2e8f0;
+  --borda-forte: #cbd5e1;
+  --tinta: #0f172a;      /* texto principal */
+  --tinta-2: #475569;    /* texto secundário */
+  --tinta-3: #94a3b8;    /* rótulo, metadado */
+}
+
+[data-tema="escuro"] {
+  --sup: #141a24;
+  --sup-2: #1b2230;
+  --fundo: #0b0e14;
+  --borda: #263041;
+  --borda-forte: #35415a;
+  --tinta: #e8eef7;
+  --tinta-2: #a3b1c6;
+  --tinta-3: #6b7a92;
+}
+
+[data-tema] {
+  background: var(--fundo);
+  color: var(--tinta);
+}
+
 /* Componentes repetidos em quase toda tela. Ficam aqui para não virar uma
    fileira de doze classes utilitárias copiada de arquivo em arquivo. */
 @layer components {
   .campo {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900
-           placeholder:text-slate-400 outline-none transition
-           focus:border-marca-500 focus:ring-2 focus:ring-marca-500/25
-           disabled:bg-slate-50 disabled:text-slate-500;
+    @apply w-full rounded-lg px-3 py-2 outline-none transition
+           focus:border-marca-500 focus:ring-2 focus:ring-marca-500/25;
+    background: var(--sup);
+    border: 1px solid var(--borda-forte);
+    color: var(--tinta);
+  }
+  .campo::placeholder {
+    color: var(--tinta-3);
+  }
+  .campo:disabled {
+    background: var(--sup-2);
+    color: var(--tinta-2);
   }
 
   .rotulo {
-    @apply mb-1.5 block text-sm font-medium text-slate-700;
+    @apply mb-1.5 block text-sm font-medium;
+    color: var(--tinta-2);
   }
 
   /* O Tailwind 4 não deixa `@apply` alcançar uma classe declarada aqui
@@ -68,15 +122,27 @@ body {
   }
 
   .btn-secundario {
-    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+    background: var(--sup);
+    border: 1px solid var(--borda-forte);
+    color: var(--tinta-2);
+  }
+  .btn-secundario:hover {
+    background: var(--sup-2);
+    color: var(--tinta);
   }
 
   .btn-fantasma {
-    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+    color: var(--tinta-2);
+  }
+  .btn-fantasma:hover {
+    background: var(--sup-2);
+    color: var(--tinta);
   }
 
   .cartao {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply rounded-xl shadow-sm;
+    background: var(--sup);
+    border: 1px solid var(--borda);
   }
 
   .etiqueta {
@@ -84,6 +150,66 @@ body {
            text-xs font-semibold ring-1 ring-inset;
   }
 }
+
+@layer components {
+  /* Texto por papel, e não por cor. Escrever `text-slate-500 escuro:text-slate-400`
+     em cada linha era a fonte de metade do ruído do painel — e de qualquer
+     tela que esquecesse o par e ficasse ilegível no escuro. */
+  .txt-forte {
+    color: var(--tinta);
+  }
+  .txt-medio {
+    color: var(--tinta-2);
+  }
+  .txt-fraco {
+    color: var(--tinta-3);
+  }
+
+  /* Título de bloco: o mesmo tamanho e peso em toda seção do painel. */
+  .titulo-bloco {
+    @apply text-xs font-semibold uppercase tracking-[0.12em];
+    color: var(--tinta-3);
+  }
+
+  /* Superfície rebaixada dentro de um cartão (caixa de destaque, ficha). */
+  .rebaixo {
+    @apply rounded-lg px-3 py-2;
+    background: var(--sup-2);
+  }
+}
+
+/* ====================================================================
+   MODAIS
+
+   `<dialog>` nativo, e não um div com z-index: ele já vem com foco preso
+   dentro, Esc para fechar, fundo inerte e leitura correta por leitor de
+   tela. Reimplementar isso à mão é o caminho conhecido para uma janela
+   que o teclado atravessa.
+   ==================================================================== */
+
+dialog::backdrop {
+  background: rgba(2, 6, 16, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+dialog {
+  background: var(--sup);
+  color: var(--tinta);
+  border: 1px solid var(--borda);
+  max-height: min(85vh, 48rem);
+
+  /* O navegador centraliza um dialog modal com margem automática, e o
+     preflight do Tailwind zera a margem de todo elemento. Sem esta linha a
+     janela nasce grudada no canto superior esquerdo. */
+  margin: auto;
+}
+
+/* Sem animação de entrada de propósito.
+ *
+ * A versão anterior usava @starting-style com transição de transform e
+ * display: allow-discrete. Ela travava no estado inicial — o transform
+ * ficava preso em translateY(8px), e a janela aparecia 8px fora do centro.
+ * Um fade de 160ms não paga o risco de a janela nascer torta. */
 
 /* O código público é ditado por telefone e copiado de papel. Monoespaçado e
    espaçado para "8" e "B" não se confundirem na leitura. */

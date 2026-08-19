@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buscarOsPublica, conferirAcesso } from "@/lib/portal";
 import { liberarAcesso, temAcesso } from "@/lib/portal-sessao";
+import { moeda } from "@/lib/format";
 
 export type EstadoForm = { erro?: string };
 
@@ -85,7 +86,7 @@ export async function decidirOrcamento(dados: FormData) {
     status: aprovou ? "aprovado" : "recusado",
     titulo: aprovou ? "Orçamento aprovado pelo cliente" : "Orçamento recusado pelo cliente",
     descricao: aprovou
-      ? `Serviço autorizado no valor de R$ ${Number(os.valor_orcado ?? 0).toFixed(2)}.`
+      ? `Serviço autorizado no valor de ${moeda(os.valor_orcado)}.`
       : "O cliente optou por não realizar o serviço.",
     autor: "cliente",
   });

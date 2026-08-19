@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { buscarOsDosClientes } from "@/lib/portal";
 import { clientesLiberados } from "@/lib/portal-sessao";
 import { EtiquetaStatus } from "@/components/etiqueta-status";
-import { data, moeda } from "@/lib/format";
+import { data } from "@/lib/format";
 
 /**
  * A lista de quem entrou por CPF e tem mais de um conserto.
@@ -32,7 +32,7 @@ export default async function MinhasOs() {
       <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16">
         <h1 className="text-3xl font-bold tracking-tight">Seus consertos</h1>
         <p className="mt-2 text-white/50">
-          {lista.length} ordens de serviço no seu CPF. Toque em uma para ver os detalhes.
+          {lista.length} ordens de serviço no seu CPF. Toque em uma para ver o andamento.
         </p>
 
         <ul className="mt-8 space-y-3">
@@ -52,10 +52,10 @@ export default async function MinhasOs() {
                 <EtiquetaStatus status={os.status} publico escuro />
 
                 <div className="text-right">
-                  <p className="font-semibold text-white">
-                    {os.valor != null ? moeda(os.valor) : "—"}
-                  </p>
-                  <p className="codigo-os text-xs text-white/30">{os.codigo}</p>
+                  <p className="codigo-os text-sm text-white/35">{os.codigo}</p>
+                  {os.prazo_estimado && (
+                    <p className="text-xs text-white/30">até {data(os.prazo_estimado)}</p>
+                  )}
                 </div>
               </Link>
             </li>

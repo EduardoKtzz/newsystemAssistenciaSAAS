@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
 /**
@@ -13,11 +14,28 @@ export function BotaoEnvio({
   children,
   carregando = "Salvando...",
   className = "btn-primario",
+  fechaModal = false,
   ...props
-}: React.ComponentProps<"button"> & { carregando?: string }) {
+}: React.ComponentProps<"button"> & {
+  carregando?: string;
+  /** Fecha o `<dialog>` em volta assim que a ação termina. */
+  fechaModal?: boolean;
+}) {
   const { pending } = useFormStatus();
+  const botao = useRef<HTMLButtonElement>(null);
+  const rodava = useRef(false);
+
+  useEffect(() => {
+    // A janela fecha na descida do `pending`, e não no clique: fechar no
+    // clique esconderia um erro que a ação ainda vai devolver.
+    if (fechaModal && rodava.current && !pending) {
+      botao.current?.closest("dialog")?.close();
+    }
+    rodava.current = pending;
+  }, [pending, fechaModal]);
+
   return (
-    <button type="submit" disabled={pending} className={className} {...props}>
+    <button ref={botao} type="submit" disabled={pending} className={className} {...props}>
       {pending ? carregando : children}
     </button>
   );

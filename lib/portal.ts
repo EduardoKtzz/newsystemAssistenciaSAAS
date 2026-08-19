@@ -53,7 +53,7 @@ export type OsPublica = Pick<
 };
 
 /** Quantos palpites de telefone aceitamos antes de travar a OS. */
-const LIMITE_TENTATIVAS = 8;
+export const LIMITE_TENTATIVAS = 8;
 
 type Resultado =
   | { ok: true }
@@ -166,64 +166,26 @@ export async function buscarItens(osId: string): Promise<OsItem[]> {
 ------------------------------------------------------------------- */
 
 /**
- * Confere CPF + os 4 últimos dígitos do telefone e devolve os cadastros
- * que batem.
+ * Quem são os cadastros deste CPF.
  *
- * São vários porque `cliente` é por loja: a mesma pessoa atendida em duas
- * assistências tem dois cadastros, e ela tem direito de ver os dois.
+ * Sem segundo fator: o CPF sozinho abre a CAMADA DE STATUS — onde o
+ * aparelho está e para quando. Nada de valor, diagnóstico ou conversa.
  *
- * O segundo fator continua sendo o telefone, e não só o CPF, porque no
- * Brasil o CPF de alguém não é segredo — vaza em cadastro de farmácia, em
- * lista de condomínio, em qualquer lugar. Sozinho ele identifica, mas não
- * autentica.
+ * A régua é essa: status é o que o cliente perguntaria por telefone e a
+ * atendente responderia sem pestanejar. O resto (quanto custa, o que o
+ * técnico achou, o que foi conversado, e principalmente aprovar o
+ * serviço) exige confirmar os 4 últimos dígitos do telefone.
+ *
+ * São vários cadastros porque `cliente` é por loja: a mesma pessoa
+ * atendida em duas assistências tem dois, e vê os dois.
  */
-export async function conferirPorCpf(
-  cpfBruto: string,
-  quatroDigitos: string,
-): Promise<
-  { ok: true; clienteIds: string[] } | { ok: false; motivo: "nao_encontrado" | "bloqueado" }
-> {
-  const admin = supabaseAdmin();
+export async function buscarClientesPorCpf(cpfBruto: string): Promise<string[]> {
   const cpf = soDigitos(cpfBruto);
-  const digitos = soDigitos(quatroDigitos);
+  if (cpf.length !== 11) return [];
 
-  if (cpf.length !== 11 || digitos.length !== 4) {
-    return { ok: false, motivo: "nao_encontrado" };
-  }
-
-  const { data: cadastros } = await admin
-    .from("cliente")
-    .select("id, telefone, tentativas_portal")
-    .eq("documento", cpf);
-
-  if (!cadastros?.length) return { ok: false, motivo: "nao_encontrado" };
-
-  if (cadastros.some((c) => (c.tentativas_portal ?? 0) >= LIMITE_TENTATIVAS)) {
-    return { ok: false, motivo: "bloqueado" };
-  }
-
-  const certos = cadastros.filter((c) => soDigitos(c.telefone).slice(-4) === digitos);
-
-  if (!certos.length) {
-    // Erro no telefone conta contra todos os cadastros daquele CPF: são a
-    // mesma pessoa, e contar em um só deixaria o limite ser burlado
-    // alternando entre as lojas.
-    await Promise.all(
-      cadastros.map((c) =>
-        admin
-          .from("cliente")
-          .update({ tentativas_portal: (c.tentativas_portal ?? 0) + 1 })
-          .eq("id", c.id),
-      ),
-    );
-    return { ok: false, motivo: "nao_encontrado" };
-  }
-
-  await Promise.all(
-    certos.map((c) => admin.from("cliente").update({ tentativas_portal: 0 }).eq("id", c.id)),
-  );
-
-  return { ok: true, clienteIds: certos.map((c) => c.id) };
+  const admin = supabaseAdmin();
+  const { data } = await admin.from("cliente").select("id").eq("documento", cpf);
+  return (data ?? []).map((c) => c.id);
 }
 
 export type ResumoOs = {
@@ -234,10 +196,14 @@ export type ResumoOs = {
   loja: string;
   criado_em: string;
   prazo_estimado: string | null;
-  valor: number | null;
 };
 
-/** As OS dos cadastros liberados, da mais recente para a mais antiga. */
+/**
+ * As OS dos cadastros liberados, da mais recente para a mais antiga.
+ *
+ * Sem valores: esta lista é alcançada só com o CPF, e preço faz parte da
+ * camada que pede confirmação do telefone.
+ */
 export async function buscarOsDosClientes(clienteIds: string[]): Promise<ResumoOs[]> {
   if (!clienteIds.length) return [];
   const admin = supabaseAdmin();
@@ -245,7 +211,7 @@ export async function buscarOsDosClientes(clienteIds: string[]): Promise<ResumoO
   const { data } = await admin
     .from("os")
     .select(
-      "codigo, numero, status, criado_em, prazo_estimado, valor_final, valor_orcado, " +
+      "codigo, numero, status, criado_em, prazo_estimado, " +
         "aparelho:aparelho_id(marca, modelo), loja:loja_id(nome)",
     )
     .in("cliente_id", clienteIds)
@@ -257,8 +223,6 @@ export async function buscarOsDosClientes(clienteIds: string[]): Promise<ResumoO
     status: Os["status"];
     criado_em: string;
     prazo_estimado: string | null;
-    valor_final: number | null;
-    valor_orcado: number | null;
     aparelho: { marca: string; modelo: string };
     loja: { nome: string };
   };
@@ -271,7 +235,6 @@ export async function buscarOsDosClientes(clienteIds: string[]): Promise<ResumoO
     loja: l.loja.nome,
     criado_em: l.criado_em,
     prazo_estimado: l.prazo_estimado,
-    valor: l.valor_final ?? l.valor_orcado,
   }));
 }
 

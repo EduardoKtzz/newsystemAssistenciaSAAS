@@ -35,6 +35,8 @@ type StatusInfo = {
   cor: string;
   /** Classes da etiqueta nas telas escuras do cliente. */
   corNoite: string;
+  /** Claro + escuro na mesma etiqueta, para o painel que troca de tema. */
+  corAdaptavel: string;
   /** Para onde a loja pode mover a OS a partir daqui. */
   proximos: OsStatus[];
 };
@@ -47,6 +49,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     etapa: 1,
     cor: "bg-slate-100 text-slate-700 ring-slate-200",
     corNoite: "bg-white/8 text-white/70 ring-white/15",
+    corAdaptavel: "bg-slate-100 text-slate-700 ring-slate-200 escuro:bg-white/8 escuro:text-white/70 escuro:ring-white/15",
     proximos: ["diagnostico", "cancelado"],
   },
   diagnostico: {
@@ -57,6 +60,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     etapa: 2,
     cor: "bg-amber-100 text-amber-800 ring-amber-200",
     corNoite: "bg-amber-400/12 text-amber-200 ring-amber-300/25",
+    corAdaptavel: "bg-amber-100 text-amber-800 ring-amber-200 escuro:bg-amber-400/12 escuro:text-amber-200 escuro:ring-amber-300/25",
     proximos: ["orcamento_enviado", "cancelado"],
   },
   orcamento_enviado: {
@@ -67,6 +71,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     etapa: 3,
     cor: "bg-sky-100 text-sky-800 ring-sky-200",
     corNoite: "bg-sky-400/14 text-sky-200 ring-sky-300/30",
+    corAdaptavel: "bg-sky-100 text-sky-800 ring-sky-200 escuro:bg-sky-400/14 escuro:text-sky-200 escuro:ring-sky-300/30",
     proximos: ["aprovado", "recusado", "cancelado"],
   },
   aprovado: {
@@ -76,7 +81,8 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     etapa: 4,
     cor: "bg-emerald-100 text-emerald-800 ring-emerald-200",
     corNoite: "bg-emerald-400/14 text-emerald-200 ring-emerald-300/30",
-    proximos: ["aguardando_peca", "em_reparo", "cancelado"],
+    corAdaptavel: "bg-emerald-100 text-emerald-800 ring-emerald-200 escuro:bg-emerald-400/14 escuro:text-emerald-200 escuro:ring-emerald-300/30",
+    proximos: ["em_reparo", "cancelado"],
   },
   recusado: {
     label: "Recusado",
@@ -86,43 +92,51 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     etapa: null,
     cor: "bg-rose-100 text-rose-800 ring-rose-200",
     corNoite: "bg-rose-400/14 text-rose-200 ring-rose-300/30",
+    corAdaptavel: "bg-rose-100 text-rose-800 ring-rose-200 escuro:bg-rose-400/14 escuro:text-rose-200 escuro:ring-rose-300/30",
     proximos: ["pronto", "orcamento_enviado", "cancelado"],
   },
+  // Fora da trilha e fora de qualquer transição: a loja não move mais a OS
+  // para cá. A definição fica porque o valor continua existindo no enum do
+  // banco, e sumir com ela quebraria a tela de qualquer linha antiga.
   aguardando_peca: {
     label: "Aguardando peça",
     publico: "Peça a caminho",
     explicacao:
       "A peça necessária foi pedida ao fornecedor. Assim que chegar, o reparo começa.",
-    etapa: 5,
+    etapa: null,
     cor: "bg-violet-100 text-violet-800 ring-violet-200",
     corNoite: "bg-violet-400/14 text-violet-200 ring-violet-300/30",
+    corAdaptavel: "bg-violet-100 text-violet-800 ring-violet-200 escuro:bg-violet-400/14 escuro:text-violet-200 escuro:ring-violet-300/30",
     proximos: ["em_reparo", "cancelado"],
   },
   em_reparo: {
     label: "Em reparo",
     publico: "Em reparo",
     explicacao: "Seu aparelho está na bancada, com o serviço em andamento.",
-    etapa: 6,
+    etapa: 5,
     cor: "bg-blue-100 text-blue-800 ring-blue-200",
     corNoite: "bg-marca-400/14 text-marca-200 ring-marca-300/30",
-    proximos: ["pronto", "aguardando_peca", "cancelado"],
+    corAdaptavel: "bg-blue-100 text-blue-800 ring-blue-200 escuro:bg-marca-400/14 escuro:text-marca-200 escuro:ring-marca-300/30",
+    proximos: ["pronto", "cancelado"],
   },
   pronto: {
     label: "Pronto para retirada",
     publico: "Pronto para retirada",
     explicacao: "Serviço concluído. Seu aparelho já pode ser retirado na loja.",
-    etapa: 7,
+    etapa: 6,
     cor: "bg-teal-100 text-teal-800 ring-teal-200",
     corNoite: "bg-teal-400/14 text-teal-200 ring-teal-300/30",
+    corAdaptavel: "bg-teal-100 text-teal-800 ring-teal-200 escuro:bg-teal-400/14 escuro:text-teal-200 escuro:ring-teal-300/30",
     proximos: ["entregue"],
   },
   entregue: {
     label: "Entregue",
     publico: "Entregue",
     explicacao: "Aparelho entregue. A garantia do serviço começa a contar desta data.",
-    etapa: 8,
+    etapa: 7,
     cor: "bg-slate-100 text-slate-500 ring-slate-200",
     corNoite: "bg-white/6 text-white/45 ring-white/12",
+    corAdaptavel: "bg-slate-100 text-slate-500 ring-slate-200 escuro:bg-white/6 escuro:text-white/45 escuro:ring-white/12",
     proximos: [],
   },
   cancelado: {
@@ -132,6 +146,7 @@ export const STATUS: Record<OsStatus, StatusInfo> = {
     etapa: null,
     cor: "bg-slate-200 text-slate-600 ring-slate-300",
     corNoite: "bg-white/8 text-white/50 ring-white/15",
+    corAdaptavel: "bg-slate-200 text-slate-600 ring-slate-300 escuro:bg-white/8 escuro:text-white/50 escuro:ring-white/15",
     proximos: [],
   },
 };
@@ -142,7 +157,6 @@ export const TRILHA: OsStatus[] = [
   "diagnostico",
   "orcamento_enviado",
   "aprovado",
-  "aguardando_peca",
   "em_reparo",
   "pronto",
   "entregue",
@@ -154,7 +168,6 @@ export const ABERTOS: OsStatus[] = [
   "diagnostico",
   "orcamento_enviado",
   "aprovado",
-  "aguardando_peca",
   "em_reparo",
   "pronto",
 ];

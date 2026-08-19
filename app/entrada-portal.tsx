@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { CampoCpf } from "@/components/campos-mascarados";
 import { entrarNoPortal, type EstadoEntrada } from "./acoes-portal";
 
 function Botao() {
@@ -14,55 +16,30 @@ function Botao() {
 }
 
 /**
- * Um campo para CPF ou código, e os 4 dígitos do telefone ao lado.
+ * Um campo só: o CPF.
  *
- * Os dois campos ficam na mesma tela porque a confirmação em uma segunda
- * página só faz sentido quando a primeira revelou alguma coisa — e aqui
- * ela não revela: sem os dígitos, o servidor não responde nem se o código
- * existe. Juntar os dois tira uma tela do caminho de quem está com pressa
- * e não muda nada na segurança.
+ * Quem chega aqui está sem o próprio celular, no computador de outra
+ * pessoa, querendo saber se já pode buscar o aparelho. Cada campo a mais
+ * nesta tela é um motivo a mais para desistir e ligar para a loja — que é
+ * exatamente o telefonema que o sistema existe para evitar.
  */
 export function EntradaPortal() {
   const [estado, acao] = useActionState(entrarNoPortal, {} as EstadoEntrada);
 
   return (
-    <form action={acao} className="vidro p-6 sm:p-7">
-      <div>
-        <label htmlFor="identificador" className="rotulo-noite">
-          CPF ou código do comprovante
-        </label>
-        <input
-          id="identificador"
-          name="identificador"
-          required
-          autoFocus
-          autoComplete="off"
-          autoCapitalize="characters"
-          maxLength={18}
-          className="campo-noite text-lg"
-          placeholder="000.000.000-00  ou  A7K2M"
-        />
-      </div>
-
-      <div className="mt-4">
-        <label htmlFor="digitos" className="rotulo-noite">
-          4 últimos dígitos do seu telefone
-        </label>
-        <input
-          id="digitos"
-          name="digitos"
-          required
-          inputMode="numeric"
-          maxLength={4}
-          pattern="[0-9]{4}"
-          autoComplete="off"
-          className="campo-noite w-40 text-center text-2xl font-bold tracking-[0.4em]"
-          placeholder="0000"
-        />
-        <p className="mt-2 text-xs text-white/35">
-          É a confirmação de que o conserto é seu. Nada de senha.
-        </p>
-      </div>
+    <form action={acao} className="vidro p-6 text-left sm:p-8">
+      <label htmlFor="cpf" className="rotulo-noite">
+        Seu CPF
+      </label>
+      <CampoCpf
+        id="cpf"
+        name="cpf"
+        required
+        autoFocus
+        className="campo-noite text-center text-2xl font-semibold tracking-wider"
+        classeAviso="text-rose-300"
+        placeholder="000.000.000-00"
+      />
 
       {estado.erro && (
         <p
@@ -73,9 +50,16 @@ export function EntradaPortal() {
         </p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-5">
         <Botao />
       </div>
+
+      <p className="mt-4 text-center text-xs text-white/30">
+        Tem o comprovante em mãos?{" "}
+        <Link href="/os" className="text-white/50 underline-offset-2 hover:underline">
+          Entrar pelo código
+        </Link>
+      </p>
     </form>
   );
 }

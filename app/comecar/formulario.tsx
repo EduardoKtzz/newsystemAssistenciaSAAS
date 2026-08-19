@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { CampoTelefone } from "@/components/campos-mascarados";
 import { criarLoja, type EstadoForm } from "./actions";
 
 function Botao() {
@@ -15,6 +16,7 @@ function Botao() {
 
 export function FormularioLoja() {
   const [estado, acao] = useActionState(criarLoja, {} as EstadoForm);
+  const v = estado.valores ?? {};
 
   return (
     <form action={acao} className="vidro mt-7 space-y-5 p-6 sm:p-7">
@@ -28,6 +30,7 @@ export function FormularioLoja() {
           required
           className="campo-noite"
           placeholder="FixCell Centro"
+          defaultValue={v.nome ?? ""}
         />
       </div>
 
@@ -35,20 +38,27 @@ export function FormularioLoja() {
         <label htmlFor="seu_nome" className="rotulo-noite">
           Seu nome
         </label>
-        <input id="seu_nome" name="seu_nome" className="campo-noite" placeholder="Eduardo" />
+        <input
+          id="seu_nome"
+          name="seu_nome"
+          className="campo-noite"
+          placeholder="Eduardo"
+          defaultValue={v.seu_nome ?? ""}
+        />
       </div>
 
       <div>
         <label htmlFor="telefone" className="rotulo-noite">
           WhatsApp da loja
         </label>
-        <input
+        <CampoTelefone
           id="telefone"
           name="telefone"
           required
-          inputMode="tel"
           className="campo-noite"
+          classeAviso="text-rose-300"
           placeholder="(47) 99999-0000"
+          defaultValue={v.telefone ?? ""}
         />
         <p className="mt-2 text-xs text-white/35">
           É por onde o cliente entra em contato pelo comprovante.
@@ -64,6 +74,7 @@ export function FormularioLoja() {
           name="endereco"
           className="campo-noite"
           placeholder="Rua das Flores, 120 — Centro"
+          defaultValue={v.endereco ?? ""}
         />
       </div>
 
@@ -76,7 +87,7 @@ export function FormularioLoja() {
           name="garantia_dias"
           type="number"
           min={90}
-          defaultValue={90}
+          defaultValue={v.garantia_dias ? Number(v.garantia_dias) : 90}
           className="campo-noite w-40"
         />
         <p className="mt-2 text-xs text-white/35">

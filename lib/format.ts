@@ -17,6 +17,35 @@ export function soDigitos(v: string): string {
   return v.replace(/\D/g, "");
 }
 
+/**
+ * Lê um número digitado no balcão brasileiro: "1.200,00" vira 1200.
+ *
+ * Um `replace(",", ".")` sozinho troca só a PRIMEIRA vírgula e deixa o
+ * ponto de milhar onde estava, então "1.200,00" virava "1.200.00" e saía
+ * NaN. Isso fazia o item do orçamento não ser inserido (sem aviso nenhum,
+ * com o formulário limpando) e o sinal recebido ser gravado como zero.
+ *
+ * Devolve NaN quando não há número, para quem chama decidir o que fazer.
+ */
+export function numeroBR(bruto: string | null | undefined): number {
+  const limpo = String(bruto ?? "").replace(/[^d,.-]/g, "");
+  if (!limpo) return NaN;
+
+  // Com vírgula presente, ela é o separador decimal e todo ponto é milhar.
+  if (limpo.includes(",")) {
+    return Number(limpo.replace(/./g, "").replace(",", "."));
+  }
+
+  // Só pontos: "1.200" no balcão é mil e duzentos, não um vírgula dois. O
+  // desempate é o último grupo ter exatamente 3 dígitos — "12.5" continua
+  // sendo doze e meio.
+  const partes = limpo.split(".");
+  if (partes.length > 1 && partes[partes.length - 1].length === 3) {
+    return Number(partes.join(""));
+  }
+  return Number(limpo);
+}
+
 export function telefone(v: string | null | undefined): string {
   const d = soDigitos(v ?? "");
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
@@ -48,6 +77,49 @@ export function cpfValido(v: string): boolean {
     if (resto !== Number(d[ate])) return false;
   }
   return true;
+}
+
+/**
+ * Máscara progressiva do CPF, para uso enquanto a pessoa digita.
+ *
+ * Nunca devolve separador no fim ("123." ou "123.456."). Isso não é
+ * estética: com separador pendurado, o backspace apaga o ponto, a máscara
+ * o recoloca na hora, e o campo trava sem deixar apagar o dígito de trás.
+ * Terminando sempre em dígito, apagar funciona sozinho.
+ *
+ * Corta em 11 dígitos, então colar um texto qualquer não estoura o campo.
+ */
+export function mascaraCpf(bruto: string): string {
+  const d = soDigitos(bruto).slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+/**
+ * Máscara progressiva do telefone, para uso enquanto se digita.
+ *
+ * Mesma regra do CPF: nunca termina em separador, senão o backspace apaga
+ * o caractere, a máscara o recoloca e o campo trava.
+ *
+ * O traço muda de lugar entre o 10º e o 11º dígito — fixo e celular têm
+ * formatos diferentes, e até o 11º não dá para saber qual é. O pulo é o
+ * comportamento que todo formulário brasileiro tem, então não estranha.
+ */
+export function mascaraTelefone(bruto: string): string {
+  let d = soDigitos(bruto);
+
+  // Colar do WhatsApp traz o +55 na frente. Só tiramos quando sobra número
+  // demais para ser nacional: o DDD 55 existe (Santa Maria), e um
+  // (55) 99999-0000 legítimo tem 11 dígitos e precisa passar intacto.
+  if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+
+  d = d.slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
 export function cpf(v: string | null | undefined): string {
@@ -88,6 +160,12 @@ export function desde(v: string): string {
   if (d < 30) return `há ${d} dias`;
   const m = Math.floor(d / 30);
   return m === 1 ? "há 1 mês" : `há ${m} meses`;
+}
+
+/** Dias inteiros decorridos desde um instante. */
+export function diasDesde(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
 
 /** Dias restantes até uma data. Negativo = já passou. */

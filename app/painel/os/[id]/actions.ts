@@ -5,6 +5,7 @@ import { exigirLoja } from "@/lib/sessao-loja";
 import { supabaseServidor } from "@/lib/supabase/server";
 import { STATUS, ehStatus, type OsStatus } from "@/lib/status";
 import { somaItens } from "@/lib/types";
+import { numeroBR } from "@/lib/format";
 
 /**
  * Ações do painel sobre uma OS.
@@ -104,7 +105,7 @@ export async function adicionarItem(dados: FormData) {
   const descricao = String(dados.get("descricao") ?? "").trim();
   const tipo = String(dados.get("tipo") ?? "peca");
   const quantidade = Math.max(1, Number(dados.get("quantidade") ?? 1));
-  const valor = Number(String(dados.get("valor_unitario") ?? "0").replace(",", "."));
+  const valor = numeroBR(String(dados.get("valor_unitario") ?? ""));
 
   if (!descricao || !Number.isFinite(valor) || valor < 0) return;
 
@@ -178,7 +179,7 @@ export async function registrarPagamento(dados: FormData) {
   const { loja } = await exigirLoja();
   const osId = String(dados.get("os_id"));
   const pagamento = String(dados.get("pagamento"));
-  const sinal = Number(String(dados.get("valor_sinal") ?? "0").replace(",", "."));
+  const sinal = numeroBR(String(dados.get("valor_sinal") ?? ""));
   const valorFinal = String(dados.get("valor_final") ?? "").trim();
 
   if (!["pendente", "sinal", "pago"].includes(pagamento)) return;
@@ -189,12 +190,41 @@ export async function registrarPagamento(dados: FormData) {
     .update({
       pagamento,
       valor_sinal: Number.isFinite(sinal) ? sinal : 0,
-      valor_final: valorFinal ? Number(valorFinal.replace(",", ".")) : null,
+      valor_final: valorFinal && Number.isFinite(numeroBR(valorFinal)) ? numeroBR(valorFinal) : null,
     })
     .eq("id", osId);
 
   await registrarEvento(osId, loja.id, {
     titulo: "Pagamento atualizado",
+    publico: false,
+  });
+
+  recarregar(osId);
+}
+
+/**
+ * Devolve ao zero o contador de tentativas do portal.
+ *
+ * Depois de oito palpites errados a OS trava, e `conferirAcesso` responde
+ * "bloqueada" antes de conferir os dígitos — o reset que existe lá dentro
+ * só roda quando o cliente acerta, e acertar virou impossível. Sem esta
+ * ação, um cliente que digitou os 4 dígitos de um telefone antigo trancava
+ * a própria OS e a loja só destravava rodando SQL no Supabase.
+ *
+ * Fica registrado no histórico interno porque é a loja abrindo a porta
+ * para alguém: se a trava existe para conter quem está adivinhando, quem
+ * a removeu precisa aparecer.
+ */
+export async function liberarAcessoDoCliente(dados: FormData) {
+  const { loja } = await exigirLoja();
+  const osId = String(dados.get("os_id"));
+
+  const supabase = await supabaseServidor();
+  await supabase.from("os").update({ tentativas_portal: 0 }).eq("id", osId);
+
+  await registrarEvento(osId, loja.id, {
+    titulo: "Acesso do cliente liberado",
+    descricao: "As tentativas de confirmação pelo portal foram zeradas pela loja.",
     publico: false,
   });
 

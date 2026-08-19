@@ -6,7 +6,7 @@ import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { soDigitos } from "@/lib/format";
 
-export type EstadoForm = { erro?: string };
+export type EstadoForm = { erro?: string; valores?: Record<string, string> };
 
 /**
  * Cria a loja e liga o usuário logado a ela.
@@ -30,16 +30,23 @@ export async function criarLoja(
   } = await supabase.auth.getUser();
   if (!user) redirect("/entrar");
 
+  // O React 19 dá reset no formulário quando a ação responde. Sem devolver
+  // os valores, um telefone incompleto apaga o cadastro inteiro da loja.
+  const valores = Object.fromEntries(
+    [...dados.entries()].filter(([, v]) => typeof v === "string"),
+  ) as Record<string, string>;
+  const falha = (erro: string): EstadoForm => ({ erro, valores });
+
   const nome = String(dados.get("nome") ?? "").trim();
   const telefone = soDigitos(String(dados.get("telefone") ?? ""));
   const endereco = String(dados.get("endereco") ?? "").trim();
   const garantia = Number(dados.get("garantia_dias") ?? 90);
   const seuNome = String(dados.get("seu_nome") ?? "").trim();
 
-  if (nome.length < 2) return { erro: "Informe o nome da loja." };
-  if (telefone.length < 10) return { erro: "Informe um telefone com DDD." };
+  if (nome.length < 2) return falha("Informe o nome da loja.");
+  if (telefone.length < 10) return falha("Informe um telefone com DDD.");
   if (!Number.isFinite(garantia) || garantia < 90) {
-    return { erro: "A garantia não pode ser menor que 90 dias (CDC art. 26)." };
+    return falha("A garantia não pode ser menor que 90 dias (CDC art. 26).");
   }
 
   const admin = supabaseAdmin();
@@ -63,7 +70,7 @@ export async function criarLoja(
     .select("id")
     .single();
 
-  if (erroLoja || !loja) return { erro: "Não foi possível criar a loja. Tente de novo." };
+  if (erroLoja || !loja) return falha("Não foi possível criar a loja. Tente de novo.");
 
   const { error: erroVinculo } = await admin.from("loja_usuario").insert({
     user_id: user.id,
@@ -76,7 +83,7 @@ export async function criarLoja(
     // Loja órfã sem vínculo deixaria o usuário travado no /comecar para
     // sempre, então desfazemos antes de devolver o erro.
     await admin.from("loja").delete().eq("id", loja.id);
-    return { erro: "Não foi possível concluir o cadastro. Tente de novo." };
+    return falha("Não foi possível concluir o cadastro. Tente de novo.");
   }
 
   revalidatePath("/", "layout");
