@@ -34,8 +34,32 @@ export default async function proxy(request: NextRequest) {
     },
   });
 
-  // getUser() (e não getSession()) porque este valida o token no servidor
-  // do Supabase. getSession() só lê o cookie, que é falsificável.
+  // getUser(), e não getSession() nem getClaims().
+  //
+  // getSession() está fora de questão: ele só lê o cookie e acredita nele, e
+  // esse cookie é forjável.
+  //
+  // getClaims() esteve aqui por um tempo, porque com chave assimétrica ele
+  // confere a assinatura localmente e economiza ~670ms por navegação. Foi
+  // revertido, e o motivo merece ficar escrito para ninguém "otimizar" isto
+  // de novo:
+  //
+  //   getClaims() responde "este token é autêntico e não venceu".
+  //   getUser()   responde "esta sessão ainda existe no servidor".
+  //
+  // São perguntas diferentes, e é a segunda que importa depois que alguém
+  // aperta Sair, troca a senha, bane ou apaga uma conta. Nenhuma dessas
+  // ações mexe no token que já está no navegador: ele continua assinado e
+  // dentro da validade. Com verificação só local, quem tivesse copiado o
+  // cookie seguia entrando no painel até o token vencer sozinho — até uma
+  // hora depois de a loja achar que tinha cortado o acesso. A RLS não salva:
+  // o token é válido, então auth.uid() devolve o usuário legítimo e as
+  // policies liberam tudo.
+  //
+  // O preço é uma ida à rede por navegação. Numa assistência técnica, em que
+  // o computador do balcão é compartilhado e gente entra e sai da equipe,
+  // esse preço é barato. O caminho certo para acelerar é aproximar o banco,
+  // não deixar de perguntar.
   const {
     data: { user },
   } = await supabase.auth.getUser();
