@@ -1,0 +1,33 @@
+-- =====================================================================
+--  Índice para "quem falou por último" no painel
+-- =====================================================================
+--
+--  O painel lê as mensagens mais recentes da loja para descobrir quais
+--  conversas estão esperando resposta:
+--
+--    select os_id, autor from mensagem
+--     where loja_id = minha_loja()      -- vem da RLS
+--     order by criado_em desc
+--     limit 2000;
+--
+--  Os índices que já existiam não servem para isso:
+--
+--    idx_mensagem_os        (os_id, criado_em)        -> ordena dentro de UMA OS
+--    idx_mensagem_nao_lida  (loja_id, lida) partial   -> só as não lidas
+--
+--  Sem um índice que comece por loja_id e siga por criado_em, o Postgres
+--  varre a tabela `mensagem` INTEIRA — de todas as lojas, porque é uma
+--  tabela só para o SaaS todo — filtra por loja_id e ordena para devolver
+--  2000 linhas. O custo dessa tela passa a crescer com o movimento das
+--  lojas vizinhas, e não com o da loja que abriu o painel. Uma assistência
+--  grande entrando no sistema deixaria o painel de todas as outras lento,
+--  sem nada aparecer no código.
+--
+--  COMO USAR
+--    Cole no SQL Editor do Supabase e rode. É seguro rodar mais de uma vez.
+--    Em banco pequeno não muda nada visível — o ganho aparece quando a
+--    tabela cresce, que é exatamente quando é caro descobrir o problema.
+-- =====================================================================
+
+create index if not exists idx_mensagem_loja_recente
+  on mensagem (loja_id, criado_em desc);
