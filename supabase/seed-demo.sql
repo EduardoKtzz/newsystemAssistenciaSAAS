@@ -17,24 +17,54 @@
 --  busca do painel, que era onde estava o bug do int4.
 --
 --  COMO USAR
---    1. Crie a loja pela interface (/comecar) e anote o nome exato.
---    2. Troque o nome na linha marcada logo abaixo.
---    3. Cole o arquivo inteiro no SQL Editor do Supabase e rode.
+--    1. Crie a loja pela interface (/comecar).
+--    2. Cole o arquivo inteiro no SQL Editor do Supabase e rode.
+--
+--  Em banco novo, com uma loja só, não é preciso editar nada — o script
+--  acha a loja sozinho. Com mais de uma loja ele PARA e pede o nome, em
+--  vez de escolher no chute: encher a loja errada de OS falsa é o tipo de
+--  coisa que só se descobre com o cliente na frente.
 --
 --  Para repetir antes da próxima visita, rode antes o bloco de limpeza
 --  que está no fim do arquivo.
 -- =====================================================================
 
 
--- >>>>>>>>>>>>>>>>  TROQUE PELO NOME EXATO DA SUA LOJA  <<<<<<<<<<<<<<<<
+-- ---------------------------------------------------------------------
+--  Qual loja encher
+--
+--  Com uma loja só no banco — o caso de um projeto recém-criado — não é
+--  preciso mexer em nada aqui. Havendo mais de uma, troque o null pelo
+--  nome exato da loja.
+--
+--  Nada de psql aqui (\set e afins): o SQL Editor do Supabase não executa
+--  meta-comando, então a escolha é uma tabela temporária comum.
+-- ---------------------------------------------------------------------
+create temp table _alvo as select null::text as nome;   -- ex.: 'FixCell Centro'
+
 create temp table _loja as
-  select id from loja where nome = 'Assistência Demo Bancada' limit 1;
+  select l.id
+    from loja l
+   where (select nome from _alvo) is null
+      or l.nome = (select nome from _alvo)
+   limit 2;
 
 do $$
+declare
+  n int;
 begin
-  if not exists (select 1 from _loja) then
+  select count(*) into n from _loja;
+
+  if n = 0 then
     raise exception
-      'Nenhuma loja com esse nome. Veja os nomes disponíveis com: select nome from loja;';
+      'Nenhuma loja encontrada. Crie a loja pela interface (/comecar) antes de rodar este seed.';
+  end if;
+
+  -- Para de propósito em vez de pegar a primeira: encher a loja errada de
+  -- OS falsa é o tipo de erro que só aparece com o cliente na frente.
+  if n > 1 then
+    raise exception
+      'Há mais de uma loja neste banco. Escreva o nome exato no lugar do null, na linha "create temp table _alvo". Veja os nomes com: select nome from loja;';
   end if;
 end $$;
 
