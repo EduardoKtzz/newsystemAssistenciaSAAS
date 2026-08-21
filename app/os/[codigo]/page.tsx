@@ -314,7 +314,7 @@ export default async function Portal({ params }: PageProps<"/os/[codigo]">) {
               <ol className="mt-5 space-y-5">
                 {eventos.map((e) => (
                   <li key={e.id} className="flex gap-4">
-                    <div className="mt-1.5 size-2 shrink-0 rounded-full bg-marca-400 shadow-[0_0_10px_rgba(46,155,255,.7)]" />
+                    <div className="mt-1.5 size-2 shrink-0 rounded-full bg-marca-400 shadow-[0_0_10px_rgba(169,123,255,.7)]" />
                     <div>
                       <p className="font-medium text-white/90">{e.titulo}</p>
                       {e.descricao && (

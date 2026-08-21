@@ -12,19 +12,31 @@
   horas por dia, num monitor barato sob luz de loja. Fundo preto o dia
   inteiro cansa, e ali beleza é ler rápido sem errar.
 
-  A paleta é a mesma nos dois: os azuis da landing.
+  A paleta é a mesma nos dois: os roxos da marca. Uma escala só, porque cor
+  de marca que muda de tela para tela deixa de ser marca.
 */
 @theme {
-  --color-marca-50: #eff8ff;
-  --color-marca-100: #dbeefe;
-  --color-marca-200: #bfe2ff;
-  --color-marca-300: #93d1ff;
-  --color-marca-400: #5be3ff;
-  --color-marca-500: #2e9bff;
-  --color-marca-600: #1a7fe8;
-  --color-marca-700: #0b5fd8;
-  --color-marca-800: #0d4ba8;
-  --color-marca-900: #113f84;
+  /* Roxo, e não o azul de sempre.
+
+     Software de gestão é azul por inércia — é a cor que vem no template, e
+     por isso é a cor de todo concorrente. Num mercado em que a loja escolhe
+     o sistema pela tela que vai mostrar para o cliente, parecer com o
+     vizinho é o pior resultado possível. O roxo custa o mesmo e não se
+     confunde com nada.
+
+     A escala vai do lavanda ao violeta profundo. Os claros (50-300) são
+     texto e fundo de etiqueta; os escuros (600-900) carregam texto branco
+     no painel, então não podem clarear sem quebrar a leitura. */
+  --color-marca-50: #f6f3ff;
+  --color-marca-100: #ece5ff;
+  --color-marca-200: #dbcdff;
+  --color-marca-300: #c3a8ff;
+  --color-marca-400: #a97bff;
+  --color-marca-500: #8f4dfb;
+  --color-marca-600: #7c2ff0;
+  --color-marca-700: #691fd4;
+  --color-marca-800: #571aac;
+  --color-marca-900: #451880;
 
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -237,17 +249,46 @@ dialog {
 }
 
 /* A base opaca cobre até o overscroll, senão o cinza do <body> pisca na
-   borda quando o dedo puxa a página além do fim. */
+   borda quando o dedo puxa a página além do fim.
+
+   Quase preta, mas com um resto de violeta em vez de preto puro: sobre
+   preto absoluto os brilhos roxos parecem colados por cima da tela, e não
+   saindo de dentro dela. */
 .noite::before {
   content: "";
   position: fixed;
   inset: -10vh 0;
-  background: #07080b;
+  background: #06040c;
   z-index: -2;
 }
 
-/* Três brilhos e uma grade. A grade some nas bordas por uma máscara, o que
-   dá profundidade sem desenhar uma moldura. */
+/*
+  A GRADE DE QUADRADOS SAIU DAQUI.
+
+  Ela é o clichê da tela escura de SaaS, e trabalhava contra o produto: a
+  repetição regular puxa o olho para o fundo, e o fundo não tem nada para
+  ler. Tirar a malha não deixa a tela mais pobre — deixa a profundidade vir
+  de luz, que é de onde ela vem no mundo.
+
+  No lugar entram quatro camadas, listadas da mais próxima para a mais funda
+  (é a ordem que a propriedade background usa):
+
+  1. GRÃO — ruído a 3,5%. Degradê grande em tela de 8 bits fecha em faixas
+     visíveis, e é isso que denuncia "fundo feito no CSS". O grão quebra a
+     faixa e é o que dá textura de imagem. Vai embutido como SVG, então não
+     custa requisição de rede nem arquivo no repositório.
+  2. VINHETA — escurece as quinas. É ela que faz o centro parecer iluminado;
+     sem vinheta a tela inteira só fica mais clara, que é outra coisa.
+  3. NÚCLEO — um violeta fraco atrás de onde o cartão fica. Separa o vidro
+     do fundo sem precisar clarear a borda do cartão.
+  4. AURORA — dois roxos e um magenta. As fontes ficam FORA da tela de
+     propósito: brilho com o centro visível vira bolha, e bolha o olho conta
+     uma a uma em vez de ler como luz.
+
+  Continua tudo fixo e estático — nada depende de scroll, nada anima, o
+  navegador pinta uma vez e nunca mais. Era o custo caro que a landing page
+  ensinou, e ele não muda por causa da cor.
+*/
 .noite::after {
   content: "";
   position: fixed;
@@ -255,12 +296,12 @@ dialog {
   pointer-events: none;
   z-index: -1;
   background:
-    radial-gradient(58rem 40rem at 12% -12%, rgba(46, 155, 255, 0.20), transparent 62%),
-    radial-gradient(42rem 34rem at 96% 4%, rgba(91, 227, 255, 0.11), transparent 60%),
-    radial-gradient(56rem 44rem at 50% 118%, rgba(11, 95, 216, 0.18), transparent 62%),
-    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px) 0 0 / 68px 68px,
-    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px) 0 0 / 68px 68px;
-  mask-image: radial-gradient(120% 100% at 50% 0%, #000 35%, transparent 100%);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.035'/%3E%3C/svg%3E") 0 0 / 160px 160px,
+    radial-gradient(130% 100% at 50% 46%, transparent 46%, rgba(3, 1, 8, 0.52) 100%),
+    radial-gradient(44rem 36rem at 50% 46%, rgba(160, 107, 255, 0.17), transparent 68%),
+    radial-gradient(60rem 44rem at 12% -6%, rgba(150, 85, 255, 0.58), transparent 62%),
+    radial-gradient(46rem 36rem at 94% -2%, rgba(216, 68, 226, 0.32), transparent 60%),
+    radial-gradient(66rem 48rem at 50% 110%, rgba(122, 46, 236, 0.44), transparent 64%);
 }
 
 @layer components {
@@ -279,27 +320,29 @@ dialog {
            text-white placeholder:text-white/25 outline-none transition;
   }
   .campo-noite:focus {
-    border-color: rgba(46, 155, 255, 0.65);
-    background: rgba(46, 155, 255, 0.07);
-    box-shadow: 0 0 0 4px rgba(46, 155, 255, 0.16);
+    border-color: rgba(169, 123, 255, 0.7);
+    background: rgba(143, 77, 251, 0.08);
+    box-shadow: 0 0 0 4px rgba(143, 77, 251, 0.18);
   }
 
   .rotulo-noite {
     @apply mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45;
   }
 
-  /* O botão herda o gradiente exato da landing, glow incluso: é o mesmo
-     produto, e a pessoa que viu o site precisa reconhecer isso. */
+  /* O degradê fica na faixa clara do roxo de propósito. A tinta é quase
+     preta, e tinta escura só se lê sobre cor clara — era o que a versão
+     azul ganhava de graça abrindo em ciano. Um roxo escuro de ponta a
+     ponta fica bonito parado e ilegível com a palavra "Entrar" em cima. */
   .btn-brilho {
     @apply inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4
            text-base font-bold transition
            disabled:cursor-not-allowed disabled:opacity-55;
-    background: linear-gradient(90deg, #5be3ff, #2e9bff 60%, #0b5fd8 90%);
-    color: #02121f;
-    box-shadow: 0 10px 34px -6px rgba(46, 155, 255, 0.5);
+    background: linear-gradient(100deg, #c9a3ff, #a06bff 52%, #7b2ff0 92%);
+    color: #16032e;
+    box-shadow: 0 10px 34px -6px rgba(143, 77, 251, 0.5);
   }
   .btn-brilho:hover:not(:disabled) {
-    box-shadow: 0 14px 44px -6px rgba(46, 155, 255, 0.68);
+    box-shadow: 0 14px 44px -6px rgba(143, 77, 251, 0.68);
     filter: brightness(1.06);
   }
 
@@ -315,10 +358,12 @@ dialog {
   }
 }
 
-/* Texto em degradê — a assinatura visual da landing. O padding-bottom evita
-   que o recorte corte a descida do "ç" e do "g". */
+/* Texto em degradê — a assinatura visual da marca. Vai do lavanda ao
+   violeta, e não até o roxo escuro: a última letra da palavra cai no fim do
+   degradê, e fim escuro some no fundo preto. O padding-bottom evita que o
+   recorte corte a descida do "ç" e do "g". */
 .grad-texto {
-  background: linear-gradient(90deg, #5be3ff, #2e9bff 55%, #0b5fd8 92%);
+  background: linear-gradient(95deg, #d7bcff, #a97bff 48%, #7c2ff0 92%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
